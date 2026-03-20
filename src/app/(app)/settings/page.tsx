@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useRef, useState, type ChangeEvent } from 'react'
 import { useRouter } from 'next/navigation'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { format } from 'date-fns'
 import {
   Settings,
@@ -59,6 +59,7 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import { selectItemsFromCurrencies, selectItemsFromMap } from '@/lib/utils/select-items'
+import { getCategoryDisplayName } from '@/lib/utils/category-display-name'
 
 function escapeCsvField(value: string): string {
   if (/[",\r\n]/.test(value)) {
@@ -258,6 +259,7 @@ async function restoreFromBackupPayload(parsed: unknown) {
 
 type CategoryFormState = {
   name: string
+  name_he: string
   type: CategoryType
   icon: string
   color: string
@@ -265,6 +267,7 @@ type CategoryFormState = {
 
 const emptyCategoryForm = (): CategoryFormState => ({
   name: '',
+  name_he: '',
   type: 'expense',
   icon: 'tag',
   color: '#6366f1',
@@ -272,6 +275,7 @@ const emptyCategoryForm = (): CategoryFormState => ({
 
 export default function SettingsPage() {
   const t = useTranslations()
+  const locale = useLocale()
   const router = useRouter()
   const { data: profile, isLoading: profileLoading } = useProfile()
   const updateProfile = useUpdateProfile()
@@ -320,6 +324,7 @@ export default function SettingsPage() {
     setEditing(c)
     setCategoryForm({
       name: c.name,
+      name_he: c.name_he?.trim() ?? '',
       type: c.type,
       icon: c.icon,
       color: c.color,
@@ -330,6 +335,7 @@ export default function SettingsPage() {
   const saveCategory = useCallback(() => {
     const name = categoryForm.name.trim()
     if (!name) return
+    const name_he = categoryForm.name_he.trim() || null
     const nextSort =
       editing?.sort_order ??
       (categories.length ? Math.max(...categories.map((c) => c.sort_order)) + 1 : 0)
@@ -339,6 +345,7 @@ export default function SettingsPage() {
         {
           id: editing.id,
           name,
+          name_he,
           type: categoryForm.type,
           icon: categoryForm.icon.trim() || 'circle',
           color: categoryForm.color,
@@ -349,6 +356,7 @@ export default function SettingsPage() {
       createCategory.mutate(
         {
           name,
+          name_he,
           type: categoryForm.type,
           icon: categoryForm.icon.trim() || 'circle',
           color: categoryForm.color,
@@ -525,6 +533,7 @@ export default function SettingsPage() {
                 title={t('common.income')}
                 variant="income"
                 items={incomeCategories}
+                locale={locale}
                 onEdit={openEditCategory}
                 onDelete={(id) => deleteCategory.mutate(id)}
                 deletePending={deleteCategory.isPending}
@@ -535,6 +544,7 @@ export default function SettingsPage() {
                 title={t('common.expense')}
                 variant="expense"
                 items={expenseCategories}
+                locale={locale}
                 onEdit={openEditCategory}
                 onDelete={(id) => deleteCategory.mutate(id)}
                 deletePending={deleteCategory.isPending}
@@ -658,6 +668,16 @@ export default function SettingsPage() {
               />
             </div>
             <div className="grid gap-2">
+              <Label htmlFor="cat-name-he">{t('settings.categoryHebrewName')}</Label>
+              <Input
+                id="cat-name-he"
+                value={categoryForm.name_he}
+                onChange={(e) => setCategoryForm((f) => ({ ...f, name_he: e.target.value }))}
+                placeholder={t('settings.categoryHebrewPlaceholder')}
+                dir="rtl"
+              />
+            </div>
+            <div className="grid gap-2">
               <Label>{t('common.type')}</Label>
               <Select
                 value={categoryForm.type}
@@ -758,6 +778,7 @@ function CategoryGroup({
   title,
   variant,
   items,
+  locale,
   onEdit,
   onDelete,
   deletePending,
@@ -766,6 +787,7 @@ function CategoryGroup({
   title: string
   variant: 'income' | 'expense'
   items: Category[]
+  locale: string
   onEdit: (c: Category) => void
   onDelete: (id: string) => void
   deletePending: boolean
@@ -802,7 +824,7 @@ function CategoryGroup({
                   title={c.color}
                 />
                 <div className="min-w-0">
-                  <p className="font-medium truncate">{c.name}</p>
+                  <p className="font-medium truncate">{getCategoryDisplayName(c, locale)}</p>
                   <p className="text-xs text-muted-foreground truncate">{c.icon}</p>
                 </div>
               </div>

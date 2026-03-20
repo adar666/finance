@@ -213,6 +213,8 @@
     "editCategory": "Edit category",
     "newCategory": "New category",
     "namePlaceholder": "Groceries",
+    "categoryHebrewName": "Hebrew name (optional)",
+    "categoryHebrewPlaceholder": "מצרכים",
     "iconPlaceholder": "emoji or label",
     "icon": "Icon",
     "noCategories": "No categories yet.",

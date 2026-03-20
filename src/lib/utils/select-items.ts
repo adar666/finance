@@ -1,4 +1,6 @@
 import type { ReactNode } from 'react'
+import type { Category } from '@/types/database'
+import { getCategoryDisplayName } from '@/lib/utils/category-display-name'
 
 /**
  * Base UI Select: pass `items` on `<Select>` (Root) so `<SelectValue>` shows the option label
@@ -24,6 +26,25 @@ export function selectItemsWithNone(
   entities: ReadonlyArray<{ id: string; name: string }>
 ): SelectItemModel[] {
   return [{ value: noneValue, label: noneLabel }, ...selectItemsFromEntities(entities)]
+}
+
+export function selectItemsFromCategories(
+  entities: ReadonlyArray<Pick<Category, 'id' | 'name' | 'name_he'>>,
+  locale: string
+): SelectItemModel[] {
+  return entities.map((e) => ({
+    value: e.id,
+    label: getCategoryDisplayName(e, locale),
+  }))
+}
+
+export function selectItemsWithNoneCategories(
+  noneValue: string,
+  noneLabel: ReactNode,
+  entities: ReadonlyArray<Pick<Category, 'id' | 'name' | 'name_he'>>,
+  locale: string
+): SelectItemModel[] {
+  return [{ value: noneValue, label: noneLabel }, ...selectItemsFromCategories(entities, locale)]
 }
 
 /** Fixed ordering of values with a label map (account type, investment type, …). */

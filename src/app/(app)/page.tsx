@@ -58,10 +58,11 @@ import { useRecurringRules } from '@/lib/hooks/use-recurring'
 import { formatCurrency, formatCompact } from '@/lib/utils/currency'
 import { formatDate, formatMonthYear, getCurrentMonthRange } from '@/lib/utils/date'
 import { computeBudgetAlertRows } from '@/lib/utils/budget-health'
+import { getCategoryDisplayName } from '@/lib/utils/category-display-name'
 import { shouldShowFinanceWelcomeHero } from '@/lib/utils/dashboard-onboarding'
 import { filterUpcomingRecurringRules } from '@/lib/utils/recurring-upcoming'
 import { cn } from '@/lib/utils'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import type { Account, Transaction, Budget, SavingsGoal, Investment, RecurringRule } from '@/types/database'
 
 const CHART_COLORS = [
@@ -201,6 +202,7 @@ function panelTxsForCategory(monthTxs: Transaction[], categoryId: string): numbe
 
 export default function DashboardPage() {
   const currency = useCurrency()
+  const locale = useLocale()
   const t = useTranslations()
   const { enabled: privacyOn } = usePrivacyMode()
   useRecurringAutoGenerate()
@@ -244,8 +246,8 @@ export default function DashboardPage() {
 
   const budgetAlerts = useMemo(() => {
     if (!budgets?.length) return []
-    return computeBudgetAlertRows(budgets, budgetNudgeTxs, calendarMonthStart)
-  }, [budgets, budgetNudgeTxs, calendarMonthStart])
+    return computeBudgetAlertRows(budgets, budgetNudgeTxs, calendarMonthStart, locale)
+  }, [budgets, budgetNudgeTxs, calendarMonthStart, locale])
 
   const showWelcomeExtended = shouldShowFinanceWelcomeHero({
     accountsLoaded: !accountsLoading,
@@ -287,18 +289,22 @@ export default function DashboardPage() {
   }, [monthTxs, dateRange, rangeBoundaryKey, sixMonthFilters])
 
   const categorySpend = useMemo(() => {
+    const uncat = t('common.uncategorized')
     const map = new Map<string, { name: string; value: number; color: string }>()
-    for (const t of monthTxs) {
-      if (t.type !== 'expense') continue
-      const id = t.category_id ?? '__other__'
-      const name = (t as Transaction & { category?: { name: string; color?: string } }).category?.name ?? 'Uncategorized'
-      const color = (t as Transaction & { category?: { color?: string } }).category?.color ?? CHART_COLORS_RAW[0]
+    for (const tx of monthTxs) {
+      if (tx.type !== 'expense') continue
+      const id = tx.category_id ?? '__other__'
+      const cat = tx.category
+      const name = cat
+        ? getCategoryDisplayName(cat, locale)
+        : uncat
+      const color = cat?.color ?? CHART_COLORS_RAW[0]
       const prev = map.get(id)
-      if (prev) prev.value += t.amount
-      else map.set(id, { name, value: t.amount, color })
+      if (prev) prev.value += tx.amount
+      else map.set(id, { name, value: tx.amount, color })
     }
     return Array.from(map.values()).sort((a, b) => b.value - a.value)
-  }, [monthTxs])
+  }, [monthTxs, locale, t])
 
   const statsLoading = accountsLoading || investmentsLoading
   const chartTooltipFmt = useCallback(
@@ -590,7 +596,7 @@ export default function DashboardPage() {
               href="/budgets"
               className="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
             >
-              View all <ArrowRight className="h-3 w-3" />
+              View all <ArrowRight className="h-3 w-3 rtl:rotate-180" />
             </Link>
           </CardHeader>
           <CardContent className="space-y-5">
@@ -612,7 +618,11 @@ export default function DashboardPage() {
                 return (
                   <div key={b.id} className="space-y-2">
                     <div className="flex items-center justify-between gap-2 text-sm">
-                      <span className="font-medium truncate">{b.category?.name ?? t('common.category')}</span>
+                      <span className="font-medium truncate">
+                        {b.category
+                          ? getCategoryDisplayName(b.category, locale)
+                          : t('common.category')}
+                      </span>
                       <span className="text-muted-foreground font-amount shrink-0">
                         <PrivateMoney>{formatCurrency(spent, currency)}</PrivateMoney>
                         {' / '}
@@ -642,7 +652,7 @@ export default function DashboardPage() {
               href="/savings"
               className="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
             >
-              View all <ArrowRight className="h-3 w-3" />
+              View all <ArrowRight className="h-3 w-3 rtl:rotate-180" />
             </Link>
           </CardHeader>
           <CardContent className="grid gap-3 sm:grid-cols-2">
@@ -691,7 +701,7 @@ export default function DashboardPage() {
             href="/transactions"
             className="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
           >
-            View all <ArrowRight className="h-3 w-3" />
+            View all <ArrowRight className="h-3 w-3 rtl:rotate-180" />
           </Link>
         </CardHeader>
         <CardContent>
@@ -718,7 +728,7 @@ export default function DashboardPage() {
                   <div className="flex items-center gap-2 shrink-0">
                     {t.category && (
                       <Badge variant="outline" className="max-w-[140px] truncate border-transparent text-foreground" style={{ backgroundColor: `${t.category.color}22`, borderColor: `${t.category.color}44` }}>
-                        {t.category.name}
+                        {getCategoryDisplayName(t.category, locale)}
                       </Badge>
                     )}
                     <span

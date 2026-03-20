@@ -58,6 +58,17 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/* Rubik for Hebrew + Latin; logical font stack so LTR still uses Plus Jakarta */
+html[dir="rtl"] {
+  --font-sans: var(--font-hebrew-ui), ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
+    "Segoe UI Emoji";
+  --font-heading: var(--font-hebrew-ui), ui-sans-serif, system-ui, sans-serif;
+}
+
+html[dir="rtl"] body {
+  line-height: 1.65;
+}
+
 :root {
   --background: oklch(0.985 0.002 250);
   --foreground: oklch(0.15 0.01 260);
@@ -178,5 +189,7 @@
     font-family: var(--font-mono-ui), ui-monospace, monospace;
     font-variant-numeric: tabular-nums;
     font-feature-settings: "tnum" 1, "lnum" 1;
+    direction: ltr;
+    unicode-bidi: isolate;
   }
 }

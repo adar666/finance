@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useMemo, useState } from 'react'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { format } from 'date-fns'
 import {
   Plus,
@@ -59,7 +59,8 @@ import {
   effectiveMonthlyBudgetAmount,
   isBudgetActiveInSelectedMonth,
 } from '@/lib/utils/budget-health'
-import { selectItemsFromMap, selectItemsWithNone } from '@/lib/utils/select-items'
+import { selectItemsFromMap, selectItemsWithNoneCategories } from '@/lib/utils/select-items'
+import { getCategoryDisplayName } from '@/lib/utils/category-display-name'
 import type { Budget, BudgetPeriod, Category } from '@/types/database'
 
 const NONE = '__none__'
@@ -76,6 +77,7 @@ function progressBarClass(ratioPercent: number): string {
 
 export default function BudgetsPage() {
   const t = useTranslations()
+  const locale = useLocale()
   const currency = useCurrency()
 
   const BUDGET_PERIOD_SELECT_ITEMS = useMemo(
@@ -186,8 +188,8 @@ export default function BudgetsPage() {
   }, [expenseCategories, budgets])
 
   const newBudgetCategoryItems = useMemo(
-    () => selectItemsWithNone(NONE, '—', categoriesAvailableForNewBudget),
-    [categoriesAvailableForNewBudget]
+    () => selectItemsWithNoneCategories(NONE, '—', categoriesAvailableForNewBudget, locale),
+    [categoriesAvailableForNewBudget, locale]
   )
 
   function openEdit(b: Budget) {
@@ -290,7 +292,7 @@ export default function BudgetsPage() {
                     <SelectItem value={NONE}>—</SelectItem>
                     {categoriesAvailableForNewBudget.map((c) => (
                       <SelectItem key={c.id} value={c.id}>
-                        {c.name}
+                        {getCategoryDisplayName(c, locale)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -355,7 +357,9 @@ export default function BudgetsPage() {
             {editing && (
               <form onSubmit={handleEditSubmit} className="space-y-4">
                 <p className="text-sm text-muted-foreground">
-                  {editing.category?.name ?? t('common.category')}
+                  {editing.category
+                    ? getCategoryDisplayName(editing.category, locale)
+                    : t('common.category')}
                 </p>
                 <div className="space-y-2">
                   <Label htmlFor="edit-budget-amount">{t('budgets.amountLabel', { currency })}</Label>
@@ -399,7 +403,7 @@ export default function BudgetsPage() {
       </PageHeader>
 
       <div className="flex flex-col items-center gap-2 sm:flex-row sm:justify-center">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 rtl:flex-row-reverse">
           <Button
             type="button"
             variant="outline"
@@ -548,7 +552,7 @@ export default function BudgetsPage() {
                       aria-hidden
                     />
                     <CardTitle className="truncate text-base font-semibold">
-                      {cat?.name ?? t('common.category')}
+                      {cat ? getCategoryDisplayName(cat, locale) : t('common.category')}
                     </CardTitle>
                   </div>
                   <div className="flex shrink-0 gap-0.5">

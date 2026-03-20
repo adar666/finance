@@ -14,7 +14,7 @@ import {
   Loader2,
   Receipt,
 } from 'lucide-react'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { PageHeader } from '@/components/layout/page-header'
 import { PrivateMoney } from '@/components/layout/privacy-mode'
 import { formatCurrency } from '@/lib/utils/currency'
@@ -65,7 +65,9 @@ import { consumeAddTransactionQueryParam } from '@/lib/navigation/transaction-ad
 import {
   selectItemsFromEntities,
   selectItemsWithNone,
+  selectItemsWithNoneCategories,
 } from '@/lib/utils/select-items'
+import { getCategoryDisplayName } from '@/lib/utils/category-display-name'
 
 const PAGE_SIZE = 50
 const NONE = '__none__'
@@ -93,7 +95,12 @@ function resolveCategoryId(
 ): string | null {
   if (!name?.trim()) return null
   const n = name.trim().toLowerCase()
-  const match = categories.find((c) => c.type === type && c.name.toLowerCase() === n)
+  const match = categories.find((c) => {
+    if (c.type !== type) return false
+    if (c.name.toLowerCase() === n) return true
+    const he = c.name_he?.trim().toLowerCase()
+    return he === n
+  })
   return match?.id ?? null
 }
 
@@ -120,6 +127,7 @@ function typeIcon(t: TransactionType) {
 
 export default function TransactionsPage() {
   const currency = useCurrency()
+  const locale = useLocale()
   const t = useTranslations()
   const [searchInput, setSearchInput] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
@@ -215,8 +223,8 @@ export default function TransactionsPage() {
   )
 
   const addTxCategoryItems = useMemo(
-    () => selectItemsWithNone(NONE, t('common.none'), categoriesForType),
-    [categoriesForType, t]
+    () => selectItemsWithNoneCategories(NONE, t('common.none'), categoriesForType, locale),
+    [categoriesForType, t, locale]
   )
 
   useEffect(() => {
@@ -610,7 +618,7 @@ export default function TransactionsPage() {
                         <TableHead>{t('common.date')}</TableHead>
                         <TableHead>{t('common.type')}</TableHead>
                         <TableHead>{t('common.description')}</TableHead>
-                        <TableHead className="text-right">{t('common.amount')}</TableHead>
+                        <TableHead className="text-end">{t('common.amount')}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -632,7 +640,7 @@ export default function TransactionsPage() {
                             <TableCell className="max-w-[180px] truncate">{row.description}</TableCell>
                             <TableCell
                               className={cn(
-                                'text-right tabular-nums',
+                                'text-end tabular-nums',
                                 row.type === 'income' && 'text-emerald-600 dark:text-emerald-400',
                                 row.type === 'expense' && 'text-red-600 dark:text-red-400'
                               )}
@@ -796,7 +804,7 @@ export default function TransactionsPage() {
                       <SelectItem value={NONE}>{t('common.none')}</SelectItem>
                       {categoriesForType.map((c) => (
                         <SelectItem key={c.id} value={c.id}>
-                          {c.name}
+                          {getCategoryDisplayName(c, locale)}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -961,8 +969,8 @@ export default function TransactionsPage() {
                   <TableHead>{t('common.description')}</TableHead>
                   <TableHead>{t('common.category')}</TableHead>
                   <TableHead>{t('common.account')}</TableHead>
-                  <TableHead className="text-right">{t('common.amount')}</TableHead>
-                  <TableHead className="w-12 text-right">
+                  <TableHead className="text-end">{t('common.amount')}</TableHead>
+                  <TableHead className="w-12 text-end">
                     <span className="sr-only">{t('common.actions')}</span>
                   </TableHead>
                 </TableRow>
@@ -1020,7 +1028,7 @@ export default function TransactionsPage() {
                             <span className="text-muted-foreground">—</span>
                           ) : tx.category ? (
                             <Badge variant="outline" className="font-normal">
-                              {tx.category.name}
+                              {getCategoryDisplayName(tx.category, locale)}
                             </Badge>
                           ) : (
                             <span className="text-muted-foreground">{t('common.uncategorized')}</span>
@@ -1037,7 +1045,7 @@ export default function TransactionsPage() {
                         </TableCell>
                         <TableCell
                           className={cn(
-                            'text-right font-medium tabular-nums',
+                            'text-end font-medium tabular-nums',
                             tx.type === 'income' && 'text-emerald-600 dark:text-emerald-400',
                             tx.type === 'expense' && 'text-red-600 dark:text-red-400',
                             tx.type === 'transfer' && 'text-foreground'
@@ -1052,7 +1060,7 @@ export default function TransactionsPage() {
                             </span>
                           </PrivateMoney>
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-end">
                           <Button
                             type="button"
                             variant="ghost"

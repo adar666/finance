@@ -1,4 +1,5 @@
 import { isBefore, parseISO, startOfMonth } from 'date-fns'
+import { getCategoryDisplayName } from '@/lib/utils/category-display-name'
 
 export type BudgetHealthLevel = 'ok' | 'warn' | 'over'
 
@@ -63,14 +64,15 @@ export type BudgetForAlerts = {
   start_date: string
   period: string
   amount: number
-  category?: { name?: string | null } | null
+  category?: { name?: string | null; name_he?: string | null } | null
 }
 
 /** Dashboard / nudges: budgets in `monthStart` that are warn or over (not ok). */
 export function computeBudgetAlertRows(
   budgets: BudgetForAlerts[],
   expenseTransactions: { type: string; category_id: string | null; amount: number }[],
-  monthStart: Date
+  monthStart: Date,
+  locale = 'en'
 ): BudgetAlertRow[] {
   const spentMap = sumSpentByCategory(expenseTransactions)
   const rows: BudgetAlertRow[] = []
@@ -82,7 +84,12 @@ export function computeBudgetAlertRows(
     if (level === 'ok') continue
     rows.push({
       id: b.id,
-      name: b.category?.name ?? 'Budget',
+      name: b.category
+        ? getCategoryDisplayName(
+            { name: b.category.name ?? '', name_he: b.category.name_he },
+            locale
+          )
+        : 'Budget',
       level,
       spent,
       cap,

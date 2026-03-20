@@ -79,4 +79,21 @@ describe('computeBudgetAlertRows', () => {
     const txs = [{ type: 'expense', category_id: 'c1', amount: 50 }]
     expect(computeBudgetAlertRows(budgets, txs, monthStart)).toEqual([])
   })
+
+  it('uses Hebrew category label when locale is he', () => {
+    const budgets = [
+      {
+        id: 'b1',
+        category_id: 'c1',
+        start_date: '2024-01-01',
+        period: 'monthly',
+        amount: 100,
+        category: { name: 'Groceries', name_he: 'מצרכים' },
+      },
+    ]
+    const txs = [{ type: 'expense', category_id: 'c1', amount: 85 }]
+    const rows = computeBudgetAlertRows(budgets, txs, monthStart, 'he')
+    expect(rows).toHaveLength(1)
+    expect(rows[0]?.name).toBe('מצרכים')
+  })
 })

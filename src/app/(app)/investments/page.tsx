@@ -758,12 +758,12 @@ export default function InvestmentsPage() {
                     <TableHead>{t('investments.symbol')}</TableHead>
                     <TableHead>{t('common.name')}</TableHead>
                     <TableHead>{t('common.type')}</TableHead>
-                    <TableHead className="text-right">{t('investments.shares')}</TableHead>
-                    <TableHead className="text-right">{t('investments.costBasis')}</TableHead>
-                    <TableHead className="text-right">{t('investments.price')}</TableHead>
-                    <TableHead className="text-right">{t('common.value')}</TableHead>
-                    <TableHead className="text-right">{t('investments.gainLoss')}</TableHead>
-                    <TableHead className="w-[100px] text-right">{t('common.actions')}</TableHead>
+                    <TableHead className="text-end">{t('investments.shares')}</TableHead>
+                    <TableHead className="text-end">{t('investments.costBasis')}</TableHead>
+                    <TableHead className="text-end">{t('investments.price')}</TableHead>
+                    <TableHead className="text-end">{t('common.value')}</TableHead>
+                    <TableHead className="text-end">{t('investments.gainLoss')}</TableHead>
+                    <TableHead className="w-[100px] text-end">{t('common.actions')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -781,17 +781,17 @@ export default function InvestmentsPage() {
                             {TYPE_LABELS[inv.type]}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-right tabular-nums">{inv.shares}</TableCell>
-                        <TableCell className="text-right tabular-nums">
+                        <TableCell className="text-end tabular-nums">{inv.shares}</TableCell>
+                        <TableCell className="text-end tabular-nums">
                           {formatCurrency(inv.cost_basis, inv.currency)}
                         </TableCell>
-                        <TableCell className="text-right tabular-nums">
+                        <TableCell className="text-end tabular-nums">
                           {formatCurrency(inv.current_price, inv.currency)}
                         </TableCell>
-                        <TableCell className="text-right tabular-nums font-medium">
+                        <TableCell className="text-end tabular-nums font-medium">
                           {formatCurrency(val, inv.currency)}
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-end">
                           <div
                             className={cn(
                               'flex flex-col items-end gap-0.5 tabular-nums',
@@ -816,7 +816,7 @@ export default function InvestmentsPage() {
                             )}
                           </div>
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-end">
                           <div className="flex justify-end gap-0.5">
                             <Button
                               type="button"
