@@ -14,6 +14,7 @@ import {
   Loader2,
   Receipt,
 } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import { PageHeader } from '@/components/layout/page-header'
 import { PrivateMoney } from '@/components/layout/privacy-mode'
 import { formatCurrency } from '@/lib/utils/currency'
@@ -119,6 +120,7 @@ function typeIcon(t: TransactionType) {
 
 export default function TransactionsPage() {
   const currency = useCurrency()
+  const t = useTranslations()
   const [searchInput, setSearchInput] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all')
@@ -213,8 +215,8 @@ export default function TransactionsPage() {
   )
 
   const addTxCategoryItems = useMemo(
-    () => selectItemsWithNone(NONE, 'None', categoriesForType),
-    [categoriesForType]
+    () => selectItemsWithNone(NONE, t('common.none'), categoriesForType),
+    [categoriesForType, t]
   )
 
   useEffect(() => {
@@ -288,15 +290,14 @@ export default function TransactionsPage() {
   const [mapNotes, setMapNotes] = useState('')
   const [importAccountId, setImportAccountId] = useState('')
 
-  /** CSV column picks: sentinel row label must match trigger (not raw `__none__`). */
   const csvMappingItemsDashNone = useMemo(
     () => [{ value: NONE, label: '—' }, ...csvHeaders.map((h) => ({ value: h, label: h }))],
     [csvHeaders]
   )
 
   const csvMappingItemsNoneNone = useMemo(
-    () => [{ value: NONE, label: 'None' }, ...csvHeaders.map((h) => ({ value: h, label: h }))],
-    [csvHeaders]
+    () => [{ value: NONE, label: t('common.none') }, ...csvHeaders.map((h) => ({ value: h, label: h }))],
+    [csvHeaders, t]
   )
 
   const resetImport = useCallback(() => {
@@ -399,7 +400,7 @@ export default function TransactionsPage() {
   const canProceedStep2 = Boolean(csvFile && csvRows.length > 0 && csvParseErrors.length === 0)
 
   function handleDelete(id: string) {
-    if (!window.confirm('Delete this transaction? This cannot be undone.')) return
+    if (!window.confirm(t('transactions.deleteConfirm'))) return
     deleteTx.mutate(id)
   }
 
@@ -412,8 +413,8 @@ export default function TransactionsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Transactions"
-        description="Search, filter, and manage income, expenses, and transfers."
+        title={t('transactions.title')}
+        description={t('transactions.description')}
       >
         <Button
           type="button"
@@ -423,7 +424,7 @@ export default function TransactionsPage() {
           onClick={() => setImportOpen(true)}
         >
           <Upload className="size-4" />
-          Import CSV
+          {t('transactions.importCsv')}
         </Button>
         <Dialog
           open={importOpen}
@@ -434,20 +435,20 @@ export default function TransactionsPage() {
         >
           <DialogContent className="max-h-[min(90vh,720px)] overflow-y-auto sm:max-w-lg">
             <DialogHeader>
-              <DialogTitle>Import transactions from CSV</DialogTitle>
+              <DialogTitle>{t('transactions.importDialogTitle')}</DialogTitle>
             </DialogHeader>
             <div className="flex gap-1 text-xs text-muted-foreground">
-              <span className={importStep >= 1 ? 'font-medium text-foreground' : ''}>1. Upload</span>
+              <span className={importStep >= 1 ? 'font-medium text-foreground' : ''}>{t('transactions.stepUpload')}</span>
               <span>→</span>
-              <span className={importStep >= 2 ? 'font-medium text-foreground' : ''}>2. Map columns</span>
+              <span className={importStep >= 2 ? 'font-medium text-foreground' : ''}>{t('transactions.stepMap')}</span>
               <span>→</span>
-              <span className={importStep >= 3 ? 'font-medium text-foreground' : ''}>3. Preview</span>
+              <span className={importStep >= 3 ? 'font-medium text-foreground' : ''}>{t('transactions.stepPreview')}</span>
             </div>
 
             {importStep === 1 && (
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="csv-file">CSV file</Label>
+                  <Label htmlFor="csv-file">{t('transactions.csvFile')}</Label>
                   <Input
                     id="csv-file"
                     type="file"
@@ -469,10 +470,10 @@ export default function TransactionsPage() {
                 )}
                 <DialogFooter className="border-0 bg-transparent p-0 sm:justify-end">
                   <Button type="button" variant="outline" onClick={() => setImportOpen(false)}>
-                    Cancel
+                    {t('common.cancel')}
                   </Button>
                   <Button type="button" disabled={!canProceedStep2} onClick={() => setImportStep(2)}>
-                    Next
+                    {t('common.next')}
                   </Button>
                 </DialogFooter>
               </div>
@@ -481,18 +482,18 @@ export default function TransactionsPage() {
             {importStep === 2 && (
               <div className="space-y-4">
                 <p className="text-sm text-muted-foreground">
-                  Match each field to a column from your file ({csvHeaders.length} columns).
+                  {t('transactions.matchColumns', { count: csvHeaders.length })}
                 </p>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="space-y-2">
-                    <Label>Date column</Label>
+                    <Label>{t('transactions.dateColumn')}</Label>
                     <Select
                       value={mapDate || NONE}
                       onValueChange={(v) => setMapDate(v == null || v === NONE ? '' : v)}
                       items={csvMappingItemsDashNone}
                     >
                       <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select column" />
+                        <SelectValue placeholder={t('transactions.selectColumn')} />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value={NONE}>—</SelectItem>
@@ -501,14 +502,14 @@ export default function TransactionsPage() {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label>Amount column</Label>
+                    <Label>{t('transactions.amountColumn')}</Label>
                     <Select
                       value={mapAmount || NONE}
                       onValueChange={(v) => setMapAmount(v == null || v === NONE ? '' : v)}
                       items={csvMappingItemsDashNone}
                     >
                       <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select column" />
+                        <SelectValue placeholder={t('transactions.selectColumn')} />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value={NONE}>—</SelectItem>
@@ -517,14 +518,14 @@ export default function TransactionsPage() {
                     </Select>
                   </div>
                   <div className="space-y-2 sm:col-span-2">
-                    <Label>Description column</Label>
+                    <Label>{t('transactions.descriptionColumn')}</Label>
                     <Select
                       value={mapDescription || NONE}
                       onValueChange={(v) => setMapDescription(v == null || v === NONE ? '' : v)}
                       items={csvMappingItemsDashNone}
                     >
                       <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select column" />
+                        <SelectValue placeholder={t('transactions.selectColumn')} />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value={NONE}>—</SelectItem>
@@ -533,7 +534,7 @@ export default function TransactionsPage() {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label>Category (optional)</Label>
+                    <Label>{t('transactions.categoryOptional')}</Label>
                     <Select
                       value={mapCategory || NONE}
                       onValueChange={(v) =>
@@ -542,26 +543,26 @@ export default function TransactionsPage() {
                       items={csvMappingItemsNoneNone}
                     >
                       <SelectTrigger className="w-full">
-                        <SelectValue placeholder="None" />
+                        <SelectValue placeholder={t('common.none')} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value={NONE}>None</SelectItem>
+                        <SelectItem value={NONE}>{t('common.none')}</SelectItem>
                         {csvHeaders.map(headerSelectItem)}
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label>Notes (optional)</Label>
+                    <Label>{t('transactions.notesOptional')}</Label>
                     <Select
                       value={mapNotes || NONE}
                       onValueChange={(v) => setMapNotes(v == null || v === NONE ? '' : v)}
                       items={csvMappingItemsNoneNone}
                     >
                       <SelectTrigger className="w-full">
-                        <SelectValue placeholder="None" />
+                        <SelectValue placeholder={t('common.none')} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value={NONE}>None</SelectItem>
+                        <SelectItem value={NONE}>{t('common.none')}</SelectItem>
                         {csvHeaders.map(headerSelectItem)}
                       </SelectContent>
                     </Select>
@@ -569,10 +570,10 @@ export default function TransactionsPage() {
                 </div>
                 <DialogFooter className="border-0 bg-transparent p-0 sm:justify-end">
                   <Button type="button" variant="outline" onClick={() => setImportStep(1)}>
-                    Back
+                    {t('common.back')}
                   </Button>
                   <Button type="button" disabled={!mappingValid} onClick={() => setImportStep(3)}>
-                    Next
+                    {t('common.next')}
                   </Button>
                 </DialogFooter>
               </div>
@@ -581,14 +582,14 @@ export default function TransactionsPage() {
             {importStep === 3 && (
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label>Default account</Label>
+                  <Label>{t('transactions.defaultAccount')}</Label>
                   <Select
                     value={importAccountId || null}
                     onValueChange={(v) => setImportAccountId(v ?? '')}
                     items={importAccountSelectItems}
                   >
                     <SelectTrigger className="w-full">
-                      <SelectValue placeholder={accountsLoading ? 'Loading…' : 'Select account'} />
+                      <SelectValue placeholder={accountsLoading ? t('common.loading') : t('transactions.selectAccount')} />
                     </SelectTrigger>
                     <SelectContent>
                       {accounts.map((a) => (
@@ -599,25 +600,24 @@ export default function TransactionsPage() {
                     </SelectContent>
                   </Select>
                   <p className="text-xs text-muted-foreground">
-                    All imported rows are assigned to this account. Sign of amount maps to income (positive) or expense
-                    (negative), per your CSV parser.
+                    {t('transactions.importHelperText')}
                   </p>
                 </div>
                 <div className="rounded-md border">
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Type</TableHead>
-                        <TableHead>Description</TableHead>
-                        <TableHead className="text-right">Amount</TableHead>
+                        <TableHead>{t('common.date')}</TableHead>
+                        <TableHead>{t('common.type')}</TableHead>
+                        <TableHead>{t('common.description')}</TableHead>
+                        <TableHead className="text-right">{t('common.amount')}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {previewMapped.length === 0 ? (
                         <TableRow>
                           <TableCell colSpan={4} className="text-center text-muted-foreground">
-                            No preview rows
+                            {t('transactions.noPreviewRows')}
                           </TableCell>
                         </TableRow>
                       ) : (
@@ -656,7 +656,7 @@ export default function TransactionsPage() {
                 )}
                 <DialogFooter className="border-0 bg-transparent p-0 sm:justify-end">
                   <Button type="button" variant="outline" onClick={() => setImportStep(2)}>
-                    Back
+                    {t('common.back')}
                   </Button>
                   <Button
                     type="button"
@@ -665,7 +665,7 @@ export default function TransactionsPage() {
                     className="gap-1.5"
                   >
                     {bulkCreate.isPending && <Loader2 className="size-4 animate-spin" />}
-                    Import {bulkPayload.length} transaction{bulkPayload.length === 1 ? '' : 's'}
+                    {t('transactions.importCount', { count: bulkPayload.length })}
                   </Button>
                 </DialogFooter>
               </div>
@@ -675,7 +675,7 @@ export default function TransactionsPage() {
 
         <Button type="button" size="sm" className="gap-1.5" onClick={() => setAddOpen(true)}>
           <Plus className="size-4" />
-          Add transaction
+          {t('transactions.addTransaction')}
         </Button>
         <Dialog
           open={addOpen}
@@ -686,7 +686,7 @@ export default function TransactionsPage() {
         >
           <DialogContent className="max-h-[min(90vh,640px)] overflow-y-auto sm:max-w-md">
             <DialogHeader>
-              <DialogTitle>New transaction</DialogTitle>
+              <DialogTitle>{t('transactions.newTransaction')}</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleAddSubmit} className="space-y-4">
               <Tabs
@@ -696,21 +696,21 @@ export default function TransactionsPage() {
                 <TabsList className="grid w-full grid-cols-3">
                   <TabsTrigger value="income" className="gap-1 text-xs sm:text-sm">
                     <ArrowUpCircle className="size-3.5 shrink-0" />
-                    Income
+                    {t('common.income')}
                   </TabsTrigger>
                   <TabsTrigger value="expense" className="gap-1 text-xs sm:text-sm">
                     <ArrowDownCircle className="size-3.5 shrink-0" />
-                    Expense
+                    {t('common.expense')}
                   </TabsTrigger>
                   <TabsTrigger value="transfer" className="gap-1 text-xs sm:text-sm">
                     <ArrowLeftRight className="size-3.5 shrink-0" />
-                    Transfer
+                    {t('common.transfer')}
                   </TabsTrigger>
                 </TabsList>
               </Tabs>
 
               <div className="space-y-2">
-                <Label htmlFor="tx-amount">Amount</Label>
+                <Label htmlFor="tx-amount">{t('common.amount')}</Label>
                 <Input
                   id="tx-amount"
                   inputMode="decimal"
@@ -721,28 +721,28 @@ export default function TransactionsPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="tx-desc">Description</Label>
+                <Label htmlFor="tx-desc">{t('common.description')}</Label>
                 <Input
                   id="tx-desc"
-                  placeholder="What was this?"
+                  placeholder={t('transactions.whatWasThis')}
                   value={formDescription}
                   onChange={(e) => setFormDescription(e.target.value)}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="tx-date">Date</Label>
+                <Label htmlFor="tx-date">{t('common.date')}</Label>
                 <Input id="tx-date" type="date" value={formDate} onChange={(e) => setFormDate(e.target.value)} required />
               </div>
 
               <div className="space-y-2">
-                <Label>{formType === 'transfer' ? 'From account' : 'Account'}</Label>
+                <Label>{formType === 'transfer' ? t('transactions.fromAccount') : t('common.account')}</Label>
                 <Select
                   value={formAccountId || NONE}
                   onValueChange={(v) => setFormAccountId(v == null || v === NONE ? '' : v)}
                   items={addTxAccountItems}
                 >
                   <SelectTrigger className="w-full">
-                    <SelectValue placeholder={accountsLoading ? 'Loading…' : 'Select account'} />
+                    <SelectValue placeholder={accountsLoading ? t('common.loading') : t('transactions.selectAccount')} />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value={NONE}>—</SelectItem>
@@ -757,14 +757,14 @@ export default function TransactionsPage() {
 
               {formType === 'transfer' && (
                 <div className="space-y-2">
-                  <Label>To account</Label>
+                  <Label>{t('transactions.toAccount')}</Label>
                   <Select
                     value={formToAccountId || NONE}
                     onValueChange={(v) => setFormToAccountId(v == null || v === NONE ? '' : v)}
                     items={addTxToAccountItems}
                   >
                     <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select destination" />
+                      <SelectValue placeholder={t('transactions.selectDestination')} />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value={NONE}>—</SelectItem>
@@ -782,7 +782,7 @@ export default function TransactionsPage() {
 
               {formType !== 'transfer' && (
                 <div className="space-y-2">
-                  <Label>Category</Label>
+                  <Label>{t('common.category')}</Label>
                   <Select
                     value={formCategoryId || NONE}
                     onValueChange={(v) => setFormCategoryId(v == null || v === NONE ? '' : v)}
@@ -790,10 +790,10 @@ export default function TransactionsPage() {
                     items={addTxCategoryItems}
                   >
                     <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Optional" />
+                      <SelectValue placeholder={t('common.optional')} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value={NONE}>None</SelectItem>
+                      <SelectItem value={NONE}>{t('common.none')}</SelectItem>
                       {categoriesForType.map((c) => (
                         <SelectItem key={c.id} value={c.id}>
                           {c.name}
@@ -805,11 +805,11 @@ export default function TransactionsPage() {
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="tx-notes">Notes</Label>
+                <Label htmlFor="tx-notes">{t('common.notes')}</Label>
                 <Textarea
                   id="tx-notes"
                   rows={3}
-                  placeholder="Optional details"
+                  placeholder={t('transactions.optionalDetails')}
                   value={formNotes}
                   onChange={(e) => setFormNotes(e.target.value)}
                 />
@@ -817,11 +817,11 @@ export default function TransactionsPage() {
 
               <DialogFooter className="border-0 bg-transparent p-0 sm:justify-end">
                 <Button type="button" variant="outline" onClick={() => setAddOpen(false)}>
-                  Cancel
+                  {t('common.cancel')}
                 </Button>
                 <Button type="submit" disabled={createTx.isPending} className="gap-1.5">
                   {createTx.isPending && <Loader2 className="size-4 animate-spin" />}
-                  Save
+                  {t('common.save')}
                 </Button>
               </DialogFooter>
             </form>
@@ -832,7 +832,7 @@ export default function TransactionsPage() {
       <div className="grid gap-3 sm:grid-cols-3">
         <Card>
           <CardContent className="pt-4">
-            <p className="text-xs font-medium text-muted-foreground">Total income</p>
+            <p className="text-xs font-medium text-muted-foreground">{t('transactions.totalIncome')}</p>
             <p className="mt-1 text-lg font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
               <PrivateMoney>{formatCurrency(summary.income, currency)}</PrivateMoney>
             </p>
@@ -840,7 +840,7 @@ export default function TransactionsPage() {
         </Card>
         <Card>
           <CardContent className="pt-4">
-            <p className="text-xs font-medium text-muted-foreground">Total expenses</p>
+            <p className="text-xs font-medium text-muted-foreground">{t('transactions.totalExpenses')}</p>
             <p className="mt-1 text-lg font-semibold tabular-nums text-red-600 dark:text-red-400">
               <PrivateMoney>{formatCurrency(summary.expense, currency)}</PrivateMoney>
             </p>
@@ -848,7 +848,7 @@ export default function TransactionsPage() {
         </Card>
         <Card>
           <CardContent className="pt-4">
-            <p className="text-xs font-medium text-muted-foreground">Net</p>
+            <p className="text-xs font-medium text-muted-foreground">{t('transactions.net')}</p>
             <p
               className={cn(
                 'mt-1 text-lg font-semibold tabular-nums',
@@ -864,33 +864,33 @@ export default function TransactionsPage() {
       <Card>
         <CardContent className="space-y-4 pt-6">
           <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Search className="absolute start-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              className="pl-9"
-              placeholder="Search description…"
+              className="ps-9"
+              placeholder={t('transactions.searchPlaceholder')}
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              aria-label="Search transactions"
+              aria-label={t('transactions.searchAriaLabel')}
             />
           </div>
 
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div className="space-y-2">
-              <p className="text-xs font-medium text-muted-foreground">Type</p>
+              <p className="text-xs font-medium text-muted-foreground">{t('common.type')}</p>
               <Tabs value={typeFilter} onValueChange={(v) => v && setTypeFilter(v as TypeFilter)}>
                 <TabsList>
-                  <TabsTrigger value="all">All</TabsTrigger>
+                  <TabsTrigger value="all">{t('common.all')}</TabsTrigger>
                   <TabsTrigger value="income" className="gap-1">
                     <ArrowUpCircle className="size-3.5" />
-                    Income
+                    {t('common.income')}
                   </TabsTrigger>
                   <TabsTrigger value="expense" className="gap-1">
                     <ArrowDownCircle className="size-3.5" />
-                    Expense
+                    {t('common.expense')}
                   </TabsTrigger>
                   <TabsTrigger value="transfer" className="gap-1">
                     <ArrowLeftRight className="size-3.5" />
-                    Transfer
+                    {t('common.transfer')}
                   </TabsTrigger>
                 </TabsList>
               </Tabs>
@@ -899,23 +899,23 @@ export default function TransactionsPage() {
             <div className="flex flex-wrap items-end gap-3">
               <div className="flex items-center gap-2 text-muted-foreground">
                 <Filter className="size-4 shrink-0" />
-                <span className="text-xs font-medium">Date range</span>
+                <span className="text-xs font-medium">{t('transactions.dateRange')}</span>
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="filter-start" className="text-xs">
-                  From
+                  {t('common.from')}
                 </Label>
                 <Input id="filter-start" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="filter-end" className="text-xs">
-                  To
+                  {t('common.to')}
                 </Label>
                 <Input id="filter-end" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="filter-min-amount" className="text-xs">
-                  Min
+                  {t('common.min')}
                 </Label>
                 <Input
                   id="filter-min-amount"
@@ -928,7 +928,7 @@ export default function TransactionsPage() {
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="filter-max-amount" className="text-xs">
-                  Max
+                  {t('common.max')}
                 </Label>
                 <Input
                   id="filter-max-amount"
@@ -946,7 +946,7 @@ export default function TransactionsPage() {
 
       {isError && (
         <p className="text-sm text-destructive" role="alert">
-          {error instanceof Error ? error.message : 'Failed to load transactions'}
+          {error instanceof Error ? error.message : t('transactions.failedToLoad')}
         </p>
       )}
 
@@ -957,13 +957,13 @@ export default function TransactionsPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-10" />
-                  <TableHead>Date</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Account</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead>{t('common.date')}</TableHead>
+                  <TableHead>{t('common.description')}</TableHead>
+                  <TableHead>{t('common.category')}</TableHead>
+                  <TableHead>{t('common.account')}</TableHead>
+                  <TableHead className="text-right">{t('common.amount')}</TableHead>
                   <TableHead className="w-12 text-right">
-                    <span className="sr-only">Actions</span>
+                    <span className="sr-only">{t('common.actions')}</span>
                   </TableHead>
                 </TableRow>
               </TableHeader>
@@ -986,9 +986,9 @@ export default function TransactionsPage() {
                           <Receipt className="size-6 text-muted-foreground" />
                         </div>
                         <div>
-                          <p className="font-medium">No transactions yet</p>
+                          <p className="font-medium">{t('transactions.noTransactionsYet')}</p>
                           <p className="mt-1 text-sm text-muted-foreground">
-                            Add a transaction or import a CSV to get started.
+                            {t('transactions.addOrImport')}
                           </p>
                         </div>
                         <Button
@@ -997,39 +997,39 @@ export default function TransactionsPage() {
                           onClick={() => setAddOpen(true)}
                         >
                           <Plus className="size-4" />
-                          Add transaction
+                          {t('transactions.addTransaction')}
                         </Button>
                       </div>
                     </TableCell>
                   </TableRow>
                 ) : (
-                  transactions.map((t) => {
-                    const fromAcc = t.account ?? accountMap.get(t.account_id)
-                    const toAcc = t.transfer_to_account_id
-                      ? accountMap.get(t.transfer_to_account_id)
+                  transactions.map((tx) => {
+                    const fromAcc = tx.account ?? accountMap.get(tx.account_id)
+                    const toAcc = tx.transfer_to_account_id
+                      ? accountMap.get(tx.transfer_to_account_id)
                       : undefined
                     return (
-                      <TableRow key={t.id}>
-                        <TableCell className="w-10">{typeIcon(t.type)}</TableCell>
+                      <TableRow key={tx.id}>
+                        <TableCell className="w-10">{typeIcon(tx.type)}</TableCell>
                         <TableCell className="whitespace-nowrap text-muted-foreground">
-                          {formatDate(t.date)}
+                          {formatDate(tx.date)}
                         </TableCell>
-                        <TableCell className="font-medium">{t.description}</TableCell>
+                        <TableCell className="font-medium">{tx.description}</TableCell>
                         <TableCell>
-                          {t.type === 'transfer' ? (
+                          {tx.type === 'transfer' ? (
                             <span className="text-muted-foreground">—</span>
-                          ) : t.category ? (
+                          ) : tx.category ? (
                             <Badge variant="outline" className="font-normal">
-                              {t.category.name}
+                              {tx.category.name}
                             </Badge>
                           ) : (
-                            <span className="text-muted-foreground">Uncategorized</span>
+                            <span className="text-muted-foreground">{t('common.uncategorized')}</span>
                           )}
                         </TableCell>
                         <TableCell className="max-w-[200px]">
-                          {t.type === 'transfer' && toAcc ? (
+                          {tx.type === 'transfer' && toAcc ? (
                             <span className="truncate text-sm">
-                              {fromAcc?.name ?? 'Account'} → {toAcc.name}
+                              {fromAcc?.name ?? t('common.account')} → {toAcc.name}
                             </span>
                           ) : (
                             <span className="truncate text-sm">{fromAcc?.name ?? '—'}</span>
@@ -1038,17 +1038,17 @@ export default function TransactionsPage() {
                         <TableCell
                           className={cn(
                             'text-right font-medium tabular-nums',
-                            t.type === 'income' && 'text-emerald-600 dark:text-emerald-400',
-                            t.type === 'expense' && 'text-red-600 dark:text-red-400',
-                            t.type === 'transfer' && 'text-foreground'
+                            tx.type === 'income' && 'text-emerald-600 dark:text-emerald-400',
+                            tx.type === 'expense' && 'text-red-600 dark:text-red-400',
+                            tx.type === 'transfer' && 'text-foreground'
                           )}
                         >
                           <PrivateMoney>
                             <span>
-                              {t.type === 'expense' && '−'}
-                              {t.type === 'income' && '+'}
-                              {t.type === 'transfer' && '↔ '}
-                              {formatCurrency(t.amount, currency)}
+                              {tx.type === 'expense' && '−'}
+                              {tx.type === 'income' && '+'}
+                              {tx.type === 'transfer' && '↔ '}
+                              {formatCurrency(tx.amount, currency)}
                             </span>
                           </PrivateMoney>
                         </TableCell>
@@ -1058,9 +1058,9 @@ export default function TransactionsPage() {
                             variant="ghost"
                             size="icon-sm"
                             className="text-muted-foreground hover:text-destructive"
-                            aria-label="Delete transaction"
+                            aria-label={t('transactions.deleteAriaLabel')}
                             disabled={deleteTx.isPending}
-                            onClick={() => handleDelete(t.id)}
+                            onClick={() => handleDelete(tx.id)}
                           >
                             <Trash2 className="size-4" />
                           </Button>
@@ -1080,7 +1080,7 @@ export default function TransactionsPage() {
                 size="sm"
                 onClick={() => setFetchLimit((n) => n + PAGE_SIZE)}
               >
-                Load more
+                {t('common.loadMore')}
               </Button>
             </div>
           )}

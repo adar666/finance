@@ -1,6 +1,9 @@
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { NextIntlClientProvider } from 'next-intl'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import en from '../../../messages/en.json'
+import { CommandPalette } from './command-palette'
 
 const push = vi.fn()
 
@@ -8,7 +11,13 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ push }),
 }))
 
-import { CommandPalette } from './command-palette'
+function renderCommandPalette() {
+  return render(
+    <NextIntlClientProvider locale="en" messages={en}>
+      <CommandPalette />
+    </NextIntlClientProvider>
+  )
+}
 
 describe('CommandPalette', () => {
   afterEach(() => {
@@ -21,7 +30,7 @@ describe('CommandPalette', () => {
 
   it('opens on Meta+K and lists navigation + add action', async () => {
     const user = userEvent.setup()
-    render(<CommandPalette />)
+    renderCommandPalette()
 
     await user.keyboard('{Meta>}k{/Meta}')
 
@@ -35,7 +44,7 @@ describe('CommandPalette', () => {
 
   it('opens on Control+K', async () => {
     const user = userEvent.setup()
-    render(<CommandPalette />)
+    renderCommandPalette()
 
     await user.keyboard('{Control>}k{/Control}')
 
@@ -46,7 +55,7 @@ describe('CommandPalette', () => {
 
   it('navigates to add-transaction URL when Add transaction is chosen', async () => {
     const user = userEvent.setup()
-    render(<CommandPalette />)
+    renderCommandPalette()
 
     await user.keyboard('{Control>}k{/Control}')
     await waitFor(() => {
@@ -59,7 +68,7 @@ describe('CommandPalette', () => {
 
   it('navigates to dashboard when Dashboard is chosen', async () => {
     const user = userEvent.setup()
-    render(<CommandPalette />)
+    renderCommandPalette()
 
     await user.keyboard('{Control>}k{/Control}')
     await waitFor(() =>

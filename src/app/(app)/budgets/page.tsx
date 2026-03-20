@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useMemo, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { format } from 'date-fns'
 import {
   Plus,
@@ -63,11 +64,6 @@ import type { Budget, BudgetPeriod, Category } from '@/types/database'
 
 const NONE = '__none__'
 
-const BUDGET_PERIOD_SELECT_ITEMS = selectItemsFromMap(['monthly', 'yearly'], {
-  monthly: 'Monthly',
-  yearly: 'Yearly',
-})
-
 function progressBarClass(ratioPercent: number): string {
   if (ratioPercent > 100) {
     return '[&_[data-slot=progress-indicator]]:bg-red-500'
@@ -79,7 +75,18 @@ function progressBarClass(ratioPercent: number): string {
 }
 
 export default function BudgetsPage() {
+  const t = useTranslations()
   const currency = useCurrency()
+
+  const BUDGET_PERIOD_SELECT_ITEMS = useMemo(
+    () =>
+      selectItemsFromMap(['monthly', 'yearly'], {
+        monthly: t('common.monthly'),
+        yearly: t('common.yearly'),
+      }),
+    [t]
+  )
+
   const [selectedMonth, setSelectedMonth] = useState(() =>
     startOfMonth(getCurrentMonthRange().start)
   )
@@ -227,7 +234,7 @@ export default function BudgetsPage() {
   }
 
   function handleDelete(id: string) {
-    if (!window.confirm('Delete this budget? This cannot be undone.')) return
+    if (!window.confirm(t('budgets.deleteConfirm'))) return
     deleteBudget.mutate(id)
   }
 
@@ -237,8 +244,8 @@ export default function BudgetsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Budgets"
-        description="Track spending against limits by category each month."
+        title={t('budgets.title')}
+        description={t('budgets.description')}
       >
         <Button
           type="button"
@@ -248,7 +255,7 @@ export default function BudgetsPage() {
           disabled={categoriesAvailableForNewBudget.length === 0 && !categoriesLoading}
         >
           <Plus className="size-4" />
-          Add budget
+          {t('budgets.addBudget')}
         </Button>
         <Dialog
           open={addOpen}
@@ -259,11 +266,11 @@ export default function BudgetsPage() {
         >
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle>New budget</DialogTitle>
+              <DialogTitle>{t('budgets.newBudget')}</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleAddSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label>Category</Label>
+                <Label>{t('common.category')}</Label>
                 <Select
                   value={formCategoryId || NONE}
                   onValueChange={(v) => setFormCategoryId(v == null || v === NONE ? '' : v)}
@@ -274,8 +281,8 @@ export default function BudgetsPage() {
                     <SelectValue
                       placeholder={
                         categoriesAvailableForNewBudget.length === 0
-                          ? 'All categories have a budget'
-                          : 'Select expense category'
+                          ? t('budgets.allCategoriesUsed')
+                          : t('budgets.selectExpenseCategory')
                       }
                     />
                   </SelectTrigger>
@@ -290,7 +297,7 @@ export default function BudgetsPage() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="budget-amount">Amount ({currency})</Label>
+                <Label htmlFor="budget-amount">{t('budgets.amountLabel', { currency })}</Label>
                 <Input
                   id="budget-amount"
                   inputMode="decimal"
@@ -300,12 +307,11 @@ export default function BudgetsPage() {
                   required
                 />
                 <p className="text-xs text-muted-foreground">
-                  Monthly budgets use the full amount each month. Yearly budgets are split into twelfths
-                  for this view.
+                  {t('budgets.budgetHelper')}
                 </p>
               </div>
               <div className="space-y-2">
-                <Label>Period</Label>
+                <Label>{t('budgets.period')}</Label>
                 <Select
                   value={formPeriod}
                   onValueChange={(v) => v && setFormPeriod(v as BudgetPeriod)}
@@ -315,14 +321,14 @@ export default function BudgetsPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="monthly">Monthly</SelectItem>
-                    <SelectItem value="yearly">Yearly</SelectItem>
+                    <SelectItem value="monthly">{t('common.monthly')}</SelectItem>
+                    <SelectItem value="yearly">{t('common.yearly')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="flex justify-end gap-2 pt-2">
                 <Button type="button" variant="outline" onClick={() => setAddOpen(false)}>
-                  Cancel
+                  {t('common.cancel')}
                 </Button>
                 <Button
                   type="submit"
@@ -334,7 +340,7 @@ export default function BudgetsPage() {
                   className="gap-1.5"
                 >
                   {createBudget.isPending && <Loader2 className="size-4 animate-spin" />}
-                  Save
+                  {t('common.save')}
                 </Button>
               </div>
             </form>
@@ -344,15 +350,15 @@ export default function BudgetsPage() {
         <Dialog open={editOpen} onOpenChange={setEditOpen}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle>Edit budget</DialogTitle>
+              <DialogTitle>{t('budgets.editBudget')}</DialogTitle>
             </DialogHeader>
             {editing && (
               <form onSubmit={handleEditSubmit} className="space-y-4">
                 <p className="text-sm text-muted-foreground">
-                  {editing.category?.name ?? 'Category'}
+                  {editing.category?.name ?? t('common.category')}
                 </p>
                 <div className="space-y-2">
-                  <Label htmlFor="edit-budget-amount">Amount ({currency})</Label>
+                  <Label htmlFor="edit-budget-amount">{t('budgets.amountLabel', { currency })}</Label>
                   <Input
                     id="edit-budget-amount"
                     inputMode="decimal"
@@ -362,7 +368,7 @@ export default function BudgetsPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Period</Label>
+                  <Label>{t('budgets.period')}</Label>
                   <Select
                     value={editPeriod}
                     onValueChange={(v) => v && setEditPeriod(v as BudgetPeriod)}
@@ -372,18 +378,18 @@ export default function BudgetsPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="monthly">Monthly</SelectItem>
-                      <SelectItem value="yearly">Yearly</SelectItem>
+                      <SelectItem value="monthly">{t('common.monthly')}</SelectItem>
+                      <SelectItem value="yearly">{t('common.yearly')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="flex justify-end gap-2 pt-2">
                   <Button type="button" variant="outline" onClick={() => setEditOpen(false)}>
-                    Cancel
+                    {t('common.cancel')}
                   </Button>
                   <Button type="submit" disabled={updateBudget.isPending} className="gap-1.5">
                     {updateBudget.isPending && <Loader2 className="size-4 animate-spin" />}
-                    Save
+                    {t('common.save')}
                   </Button>
                 </div>
               </form>
@@ -399,21 +405,21 @@ export default function BudgetsPage() {
             variant="outline"
             size="icon"
             className="size-9 shrink-0"
-            aria-label="Previous month"
+            aria-label={t('budgets.previousMonth')}
             onClick={() => setSelectedMonth((d) => startOfMonth(subMonths(d, 1)))}
           >
             <ChevronLeft className="size-4" />
           </Button>
           <div className="min-w-[200px] text-center">
             <p className="text-lg font-semibold tracking-tight">{formatMonthYear(selectedMonth)}</p>
-            <p className="text-xs text-muted-foreground">Budget month</p>
+            <p className="text-xs text-muted-foreground">{t('budgets.budgetMonth')}</p>
           </div>
           <Button
             type="button"
             variant="outline"
             size="icon"
             className="size-9 shrink-0"
-            aria-label="Next month"
+            aria-label={t('budgets.nextMonth')}
             onClick={() => setSelectedMonth((d) => startOfMonth(addMonths(d, 1)))}
           >
             <ChevronRight className="size-4" />
@@ -427,7 +433,7 @@ export default function BudgetsPage() {
             ? budgetsErr.message
             : txsErr instanceof Error
               ? txsErr.message
-              : 'Failed to load data'}
+              : t('budgets.failedToLoad')}
         </p>
       )}
 
@@ -438,9 +444,9 @@ export default function BudgetsPage() {
         >
           <AlertTriangle className="size-5 shrink-0 text-amber-600 dark:text-amber-400" />
           <div>
-            <p className="font-medium text-foreground">Over budget</p>
+            <p className="font-medium text-foreground">{t('budgets.overBudgetTitle')}</p>
             <p className="mt-0.5 text-muted-foreground">
-              At least one category exceeded its limit for {formatMonthYear(selectedMonth)}.
+              {t('budgets.overBudgetMessage', { month: formatMonthYear(selectedMonth) })}
             </p>
           </div>
         </div>
@@ -449,29 +455,29 @@ export default function BudgetsPage() {
       {summaryOnTrack && (
         <div className="flex items-start gap-3 rounded-lg border border-emerald-500/30 bg-emerald-500/5 px-4 py-3 text-sm">
           <CheckCircle2 className="size-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
-          <p className="font-medium text-foreground">All categories are within budget this month.</p>
+          <p className="font-medium text-foreground">{t('budgets.onTrack')}</p>
         </div>
       )}
 
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base font-medium">Month summary</CardTitle>
+          <CardTitle className="text-base font-medium">{t('budgets.monthSummary')}</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-3">
           <div>
-            <p className="text-xs font-medium text-muted-foreground">Total budget</p>
+            <p className="text-xs font-medium text-muted-foreground">{t('budgets.totalBudget')}</p>
             <p className="mt-1 text-lg font-semibold tabular-nums">
               {loading ? '…' : formatCurrency(totals.totalBudget, currency)}
             </p>
           </div>
           <div>
-            <p className="text-xs font-medium text-muted-foreground">Total spent</p>
+            <p className="text-xs font-medium text-muted-foreground">{t('budgets.totalSpent')}</p>
             <p className="mt-1 text-lg font-semibold tabular-nums text-red-600 dark:text-red-400">
               {loading ? '…' : formatCurrency(totals.totalSpent, currency)}
             </p>
           </div>
           <div>
-            <p className="text-xs font-medium text-muted-foreground">Remaining</p>
+            <p className="text-xs font-medium text-muted-foreground">{t('budgets.remaining')}</p>
             <p
               className={cn(
                 'mt-1 text-lg font-semibold tabular-nums',
@@ -508,11 +514,11 @@ export default function BudgetsPage() {
               <PiggyBank className="size-7 text-muted-foreground" />
             </div>
             <div className="max-w-sm space-y-1">
-              <p className="font-semibold">No budgets for this month</p>
+              <p className="font-semibold">{t('budgets.noBudgetsForMonth')}</p>
               <p className="text-sm text-muted-foreground">
                 {budgets.length === 0
-                  ? 'Create a budget to track spending by category. Start dates apply from the month you choose when adding.'
-                  : 'No budgets started on or before this month, or you have not added any yet.'}
+                  ? t('budgets.noBudgetsHint')
+                  : t('budgets.noBudgetsStarted')}
               </p>
             </div>
             <Button
@@ -523,7 +529,7 @@ export default function BudgetsPage() {
               disabled={categoriesAvailableForNewBudget.length === 0 && !categoriesLoading}
             >
               <Plus className="size-4" />
-              Add budget
+              {t('budgets.addBudget')}
             </Button>
           </CardContent>
         </Card>
@@ -542,7 +548,7 @@ export default function BudgetsPage() {
                       aria-hidden
                     />
                     <CardTitle className="truncate text-base font-semibold">
-                      {cat?.name ?? 'Category'}
+                      {cat?.name ?? t('common.category')}
                     </CardTitle>
                   </div>
                   <div className="flex shrink-0 gap-0.5">
@@ -551,7 +557,7 @@ export default function BudgetsPage() {
                       variant="ghost"
                       size="icon-sm"
                       className="text-muted-foreground"
-                      aria-label="Edit budget"
+                      aria-label={t('budgets.editBudgetAriaLabel')}
                       onClick={() => openEdit(b)}
                     >
                       <Pencil className="size-4" />
@@ -561,7 +567,7 @@ export default function BudgetsPage() {
                       variant="ghost"
                       size="icon-sm"
                       className="text-muted-foreground hover:text-destructive"
-                      aria-label="Delete budget"
+                      aria-label={t('budgets.deleteBudgetAriaLabel')}
                       disabled={deleteBudget.isPending}
                       onClick={() => handleDelete(b.id)}
                     >
@@ -577,24 +583,24 @@ export default function BudgetsPage() {
                     {over && (
                       <Badge variant="destructive" className="gap-1 font-normal">
                         <AlertTriangle className="size-3" />
-                        Over budget
+                        {t('budgets.overBudgetTitle')}
                       </Badge>
                     )}
                   </div>
 
                   <dl className="grid grid-cols-2 gap-3 text-sm">
                     <div>
-                      <dt className="text-muted-foreground">Budget</dt>
+                      <dt className="text-muted-foreground">{t('budgets.budget')}</dt>
                       <dd className="font-medium tabular-nums">{formatCurrency(cap, currency)}</dd>
                     </div>
                     <div>
-                      <dt className="text-muted-foreground">Spent</dt>
+                      <dt className="text-muted-foreground">{t('budgets.spent')}</dt>
                       <dd className="font-medium tabular-nums text-red-600 dark:text-red-400">
                         {formatCurrency(spent, currency)}
                       </dd>
                     </div>
                     <div className="col-span-2">
-                      <dt className="text-muted-foreground">Remaining</dt>
+                      <dt className="text-muted-foreground">{t('budgets.remaining')}</dt>
                       <dd
                         className={cn(
                           'font-medium tabular-nums',
@@ -610,7 +616,7 @@ export default function BudgetsPage() {
 
                   <div className="space-y-1.5">
                     <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>Progress</span>
+                      <span>{t('common.progress')}</span>
                       <span className="tabular-nums">{ratio.toFixed(0)}%</span>
                     </div>
                     <Progress
@@ -622,7 +628,7 @@ export default function BudgetsPage() {
                   {over && (
                     <p className="flex items-center gap-1.5 text-xs text-red-600 dark:text-red-400">
                       <AlertTriangle className="size-3.5 shrink-0" />
-                      {formatCurrency(spent - cap, currency)} over the limit
+                      {t('budgets.overLimit', { amount: formatCurrency(spent - cap, currency) })}
                     </p>
                   )}
                 </CardContent>

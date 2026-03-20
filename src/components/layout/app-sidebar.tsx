@@ -20,35 +20,38 @@ import {
   Eye,
   EyeOff,
 } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { useTheme } from '@/components/theme-provider'
 import { cn } from '@/lib/utils'
 import { usePrivacyMode } from '@/components/layout/privacy-mode'
+import { LocaleToggle } from '@/components/layout/locale-toggle'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Separator } from '@/components/ui/separator'
 import { useState, useEffect } from 'react'
 
 const COLLAPSED_KEY = 'sidebar-collapsed'
 
-const navItems = [
-  { href: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/accounts', label: 'Accounts', icon: Wallet },
-  { href: '/transactions', label: 'Transactions', icon: ArrowLeftRight },
-  { href: '/analytics', label: 'Analytics', icon: BarChart3 },
-  { href: '/budgets', label: 'Budgets', icon: PiggyBank },
-  { href: '/savings', label: 'Savings', icon: Target },
-  { href: '/investments', label: 'Investments', icon: TrendingUp },
-  { href: '/planning', label: 'Planning', icon: Calculator },
-]
-
 export function AppSidebar() {
+  const t = useTranslations()
   const pathname = usePathname()
   const router = useRouter()
   const { enabled: privacyOn, toggle: togglePrivacy } = usePrivacyMode()
   const { theme, resolvedTheme, setTheme } = useTheme()
   const [collapsed, setCollapsed] = useState(false)
   const [userEmail, setUserEmail] = useState<string | null>(null)
+
+  const navItems = [
+    { href: '/', label: t('nav.dashboard'), icon: LayoutDashboard },
+    { href: '/accounts', label: t('nav.accounts'), icon: Wallet },
+    { href: '/transactions', label: t('nav.transactions'), icon: ArrowLeftRight },
+    { href: '/analytics', label: t('nav.analytics'), icon: BarChart3 },
+    { href: '/budgets', label: t('nav.budgets'), icon: PiggyBank },
+    { href: '/savings', label: t('nav.savings'), icon: Target },
+    { href: '/investments', label: t('nav.investments'), icon: TrendingUp },
+    { href: '/planning', label: t('nav.planning'), icon: Calculator },
+  ]
 
   useEffect(() => {
     const stored = localStorage.getItem(COLLAPSED_KEY)
@@ -75,7 +78,7 @@ export function AppSidebar() {
   }
 
   const themeIcon = theme === 'system' ? Monitor : resolvedTheme === 'dark' ? Sun : Moon
-  const themeLabel = theme === 'system' ? 'System theme' : resolvedTheme === 'dark' ? 'Light mode' : 'Dark mode'
+  const themeLabel = theme === 'system' ? t('sidebar.systemTheme') : resolvedTheme === 'dark' ? t('sidebar.lightMode') : t('sidebar.darkMode')
   const ThemeIcon = themeIcon
 
   async function handleSignOut() {
@@ -87,7 +90,7 @@ export function AppSidebar() {
   return (
     <aside
       className={cn(
-        'hidden md:flex flex-col h-screen sticky top-0 border-r border-border bg-card transition-[width] duration-200',
+        'hidden md:flex flex-col h-screen sticky top-0 border-e border-border bg-card transition-[width] duration-200',
         collapsed ? 'w-[68px]' : 'w-[220px]'
       )}
     >
@@ -95,7 +98,7 @@ export function AppSidebar() {
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
           <TrendingUp className="h-4 w-4" />
         </div>
-        {!collapsed && <span className="text-lg font-bold tracking-tight">Finance</span>}
+        {!collapsed && <span className="text-lg font-bold tracking-tight">{t('brand.finance')}</span>}
       </div>
 
       <nav className="flex-1 py-3 px-2 space-y-0.5 overflow-y-auto">
@@ -161,7 +164,7 @@ export function AppSidebar() {
                   </Link>
                 )}
               />
-              <TooltipContent side="right">Settings</TooltipContent>
+              <TooltipContent side="right">{t('nav.settings')}</TooltipContent>
             </Tooltip>
             <Tooltip>
               <TooltipTrigger
@@ -184,7 +187,7 @@ export function AppSidebar() {
                 )}
               />
               <TooltipContent side="right">
-                {privacyOn ? 'Show amounts' : 'Hide amounts'}
+                {privacyOn ? t('sidebar.showAmounts') : t('sidebar.hideAmounts')}
               </TooltipContent>
             </Tooltip>
             <Tooltip>
@@ -208,6 +211,7 @@ export function AppSidebar() {
               />
               <TooltipContent side="right">{themeLabel}</TooltipContent>
             </Tooltip>
+            <LocaleToggle className="min-h-11 w-full px-2 py-2 rounded-lg text-base text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" />
             <Tooltip>
               <TooltipTrigger
                 render={(props) => (
@@ -227,7 +231,7 @@ export function AppSidebar() {
                   </button>
                 )}
               />
-              <TooltipContent side="right">Sign out</TooltipContent>
+              <TooltipContent side="right">{t('sidebar.signOut')}</TooltipContent>
             </Tooltip>
           </>
         ) : (
@@ -242,7 +246,7 @@ export function AppSidebar() {
               )}
             >
               <Settings className="h-4 w-4" />
-              Settings
+              {t('nav.settings')}
             </Link>
             <button
               type="button"
@@ -253,7 +257,7 @@ export function AppSidebar() {
               )}
             >
               {privacyOn ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              {privacyOn ? 'Show amounts' : 'Hide amounts'}
+              {privacyOn ? t('sidebar.showAmounts') : t('sidebar.hideAmounts')}
             </button>
             <button
               onClick={cycleTheme}
@@ -262,12 +266,13 @@ export function AppSidebar() {
               <ThemeIcon className="h-4 w-4" />
               {themeLabel}
             </button>
+            <LocaleToggle className="min-h-11 flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-base font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" />
             <button
               onClick={handleSignOut}
               className="min-h-11 flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-base font-medium text-muted-foreground hover:text-destructive hover:bg-accent transition-colors"
             >
               <LogOut className="h-4 w-4" />
-              Sign out
+              {t('sidebar.signOut')}
             </button>
           </>
         )}
@@ -275,7 +280,7 @@ export function AppSidebar() {
 
       <button
         onClick={toggleCollapsed}
-        className="absolute -right-3 top-20 flex h-6 w-6 items-center justify-center rounded-full border bg-card text-muted-foreground hover:text-foreground shadow-sm transition-colors"
+        className="absolute -end-3 top-20 flex h-6 w-6 items-center justify-center rounded-full border bg-card text-muted-foreground hover:text-foreground shadow-sm transition-colors"
       >
         <ChevronLeft className={cn('h-3 w-3 transition-transform', collapsed && 'rotate-180')} />
       </button>

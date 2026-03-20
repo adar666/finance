@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import {
   LayoutDashboard,
   ArrowLeftRight,
@@ -22,23 +23,6 @@ import {
 } from '@/components/ui/sheet'
 import { cn } from '@/lib/utils'
 
-const mobileNavItems = [
-  { href: '/', label: 'Home', icon: LayoutDashboard },
-  { href: '/accounts', label: 'Accounts', icon: Wallet },
-  { href: '/transactions', label: 'Txns', icon: ArrowLeftRight },
-  { href: '/budgets', label: 'Budgets', icon: PiggyBank },
-  { href: '/investments', label: 'Invest', icon: TrendingUp },
-] as const
-
-const moreSheetItems = [
-  { href: '/savings', label: 'Savings Goals', icon: Target },
-  { href: '/analytics', label: 'Analytics', icon: BarChart3 },
-  { href: '/planning', label: 'Planning', icon: Calculator },
-  { href: '/settings', label: 'Settings', icon: Settings },
-] as const
-
-const moreHrefs = moreSheetItems.map((item) => item.href)
-
 function navItemClassName(active: boolean) {
   return cn(
     'flex flex-col items-center gap-1 px-2 py-1.5 rounded-lg text-sm font-medium transition-colors min-w-[52px]',
@@ -54,7 +38,25 @@ function sheetNavLinkClassName(active: boolean) {
 }
 
 export function MobileNav() {
+  const t = useTranslations()
   const pathname = usePathname()
+
+  const mobileNavItems = [
+    { href: '/', label: t('nav.home'), icon: LayoutDashboard },
+    { href: '/accounts', label: t('nav.accounts'), icon: Wallet },
+    { href: '/transactions', label: t('nav.txns'), icon: ArrowLeftRight },
+    { href: '/budgets', label: t('nav.budgets'), icon: PiggyBank },
+    { href: '/investments', label: t('nav.invest'), icon: TrendingUp },
+  ]
+
+  const moreSheetItems = [
+    { href: '/savings', label: t('nav.savingsGoals'), icon: Target },
+    { href: '/analytics', label: t('nav.analytics'), icon: BarChart3 },
+    { href: '/planning', label: t('nav.planning'), icon: Calculator },
+    { href: '/settings', label: t('nav.settings'), icon: Settings },
+  ]
+
+  const moreHrefs = moreSheetItems.map((item) => item.href)
 
   const isMoreRouteActive = moreHrefs.some(
     (href) => pathname === href || pathname.startsWith(`${href}/`)
@@ -84,7 +86,7 @@ export function MobileNav() {
             className={cn(navItemClassName(isMoreRouteActive), 'border-0 bg-transparent')}
           >
             <MoreHorizontal className="h-5 w-5" />
-            <span>More</span>
+            <span>{t('nav.more')}</span>
           </SheetTrigger>
           <SheetContent
             side="bottom"

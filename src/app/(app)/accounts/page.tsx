@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState, useCallback, type FormEvent } from 'react'
+import { useMemo, useState, useCallback, type FormEvent, type ReactNode } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import {
   Plus,
@@ -13,6 +13,7 @@ import {
   Trash2,
   Building2,
 } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import { PageHeader } from '@/components/layout/page-header'
 import { formatCurrency } from '@/lib/utils/currency'
 import {
@@ -55,16 +56,6 @@ const ACCOUNT_TYPE_ORDER: AccountType[] = [
   'investment',
   'cash',
 ]
-
-const TYPE_LABELS: Record<AccountType, string> = {
-  checking: 'Checking',
-  savings: 'Savings',
-  credit: 'Credit',
-  investment: 'Investment',
-  cash: 'Cash',
-}
-
-const ACCOUNT_TYPE_SELECT_ITEMS = selectItemsFromMap(ACCOUNT_TYPE_ORDER, TYPE_LABELS)
 
 const TYPE_ICONS: Record<AccountType, LucideIcon> = {
   checking: Wallet,
@@ -124,11 +115,12 @@ function groupAccountsByType(accounts: Account[]): Map<AccountType, Account[]> {
 }
 
 function NetWorthSummary({ total, currency }: { total: number; currency: string }) {
+  const t = useTranslations()
   return (
     <Card className="border-primary/20 bg-gradient-to-br from-primary/5 via-background to-background shadow-sm">
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">
-          Net worth (active accounts)
+          {t('accounts.netWorth')}
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -141,7 +133,7 @@ function NetWorthSummary({ total, currency }: { total: number; currency: string 
           {formatCurrency(total, currency)}
         </p>
         <p className="mt-1 text-xs text-muted-foreground">
-          Sum of balances across all accounts marked active
+          {t('accounts.netWorthHint')}
         </p>
       </CardContent>
     </Card>
@@ -156,14 +148,17 @@ function AccountTypeIcon({ type, className }: { type: AccountType; className?: s
 function AccountCard({
   account,
   currency,
+  typeLabels,
   onEdit,
   onDelete,
 }: {
   account: Account
   currency: string
+  typeLabels: Record<AccountType, string>
   onEdit: (a: Account) => void
   onDelete: (a: Account) => void
 }) {
+  const t = useTranslations()
   const balance = account.balance
   const positive = balance >= 0
 
@@ -175,11 +170,11 @@ function AccountCard({
       )}
     >
       <div
-        className="absolute left-0 top-0 h-full w-1 rounded-l-xl"
+        className="absolute start-0 top-0 h-full w-1 rounded-s-xl"
         style={{ backgroundColor: account.color || 'var(--primary)' }}
         aria-hidden
       />
-      <CardHeader className="flex flex-row items-start justify-between gap-2 space-y-0 pb-2 pl-5">
+      <CardHeader className="flex flex-row items-start justify-between gap-2 space-y-0 pb-2 ps-5">
         <div className="flex min-w-0 flex-1 items-start gap-3">
           <div
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted"
@@ -193,11 +188,11 @@ function AccountCard({
             </CardTitle>
             <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
               <Badge variant="secondary" className="text-xs font-normal">
-                {TYPE_LABELS[account.type]}
+                {typeLabels[account.type]}
               </Badge>
               {!account.is_active && (
                 <Badge variant="outline" className="text-xs font-normal">
-                  Inactive
+                  {t('accounts.inactive')}
                 </Badge>
               )}
             </div>
@@ -226,14 +221,14 @@ function AccountCard({
           </Button>
         </div>
       </CardHeader>
-      <CardContent className="space-y-3 pl-5">
+      <CardContent className="space-y-3 ps-5">
         {account.institution ? (
           <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
             <Building2 className="h-3.5 w-3.5 shrink-0" aria-hidden />
             <span className="truncate">{account.institution}</span>
           </p>
         ) : (
-          <p className="text-sm text-muted-foreground/70">No institution</p>
+          <p className="text-sm text-muted-foreground/70">{t('accounts.noInstitution')}</p>
         )}
         <p
           className={cn(
@@ -252,49 +247,54 @@ function AccountFormFields({
   form,
   onChange,
   balanceLabel,
+  selectItems,
+  typeLabels,
 }: {
   form: AccountFormState
   onChange: (next: AccountFormState) => void
   balanceLabel: string
+  selectItems: { value: string; label: ReactNode }[]
+  typeLabels: Record<AccountType, string>
 }) {
+  const t = useTranslations()
   return (
     <div className="grid gap-4 py-2">
       <div className="grid gap-2">
-        <Label htmlFor="account-name">Name</Label>
+        <Label htmlFor="account-name">{t('common.name')}</Label>
         <Input
           id="account-name"
           value={form.name}
           onChange={(e) => onChange({ ...form, name: e.target.value })}
-          placeholder="e.g. Main checking"
+          placeholder={t('accounts.namePlaceholder')}
           autoComplete="off"
         />
       </div>
       <div className="grid gap-2">
-        <Label htmlFor="account-type">Type</Label>
+        <Label htmlFor="account-type">{t('common.type')}</Label>
         <Select
           value={form.type}
           onValueChange={(v) => onChange({ ...form, type: v as AccountType })}
-          items={ACCOUNT_TYPE_SELECT_ITEMS}
+          items={selectItems}
         >
           <SelectTrigger id="account-type" className="w-full">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {ACCOUNT_TYPE_ORDER.map((t) => (
-              <SelectItem key={t} value={t}>
-                {TYPE_LABELS[t]}
+            {ACCOUNT_TYPE_ORDER.map((tp) => (
+              <SelectItem key={tp} value={tp}>
+                {typeLabels[tp]}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
       </div>
       <div className="grid gap-2">
-        <Label htmlFor="account-institution">Institution</Label>
+        <Label htmlFor="account-institution">{t('accounts.institution')}</Label>
         <Input
           id="account-institution"
           value={form.institution}
           onChange={(e) => onChange({ ...form, institution: e.target.value })}
-          placeholder="Bank or card issuer (optional)"
+          placeholder={t('accounts.institutionPlaceholder')}
           autoComplete="organization"
         />
       </div>
@@ -310,7 +310,7 @@ function AccountFormFields({
         />
       </div>
       <div className="grid gap-2">
-        <Label htmlFor="account-color">Color</Label>
+        <Label htmlFor="account-color">{t('common.color')}</Label>
         <div className="flex flex-wrap items-center gap-2">
           <Input
             id="account-color"
@@ -356,6 +356,7 @@ function AccountsPageSkeleton() {
 }
 
 export default function AccountsPage() {
+  const t = useTranslations()
   const currency = useCurrency()
   const { data: accounts = [], isPending, isError, error } = useAccounts()
   const createMut = useCreateAccount()
@@ -370,6 +371,19 @@ export default function AccountsPage() {
 
   const [addForm, setAddForm] = useState<AccountFormState>(DEFAULT_FORM)
   const [editForm, setEditForm] = useState<AccountFormState>(DEFAULT_FORM)
+
+  const typeLabels = useMemo<Record<AccountType, string>>(() => ({
+    checking: t('accounts.checking'),
+    savings: t('accounts.savings'),
+    credit: t('accounts.credit'),
+    investment: t('accounts.investment'),
+    cash: t('accounts.cash'),
+  }), [t])
+
+  const accountTypeSelectItems = useMemo(
+    () => selectItemsFromMap(ACCOUNT_TYPE_ORDER, typeLabels),
+    [typeLabels]
+  )
 
   const netWorth = useMemo(() => {
     return accounts.filter((a) => a.is_active).reduce((sum, a) => sum + a.balance, 0)
@@ -465,7 +479,7 @@ export default function AccountsPage() {
   if (isPending) {
     return (
       <>
-        <PageHeader title="Accounts" description="Balances, institutions, and account types" />
+        <PageHeader title={t('accounts.title')} description={t('accounts.description')} />
         <AccountsPageSkeleton />
       </>
     )
@@ -474,11 +488,11 @@ export default function AccountsPage() {
   if (isError) {
     return (
       <>
-        <PageHeader title="Accounts" description="Balances, institutions, and account types" />
+        <PageHeader title={t('accounts.title')} description={t('accounts.description')} />
         <Card className="border-destructive/30 bg-destructive/5">
           <CardContent className="pt-6">
             <p className="text-sm text-destructive">
-              {error instanceof Error ? error.message : 'Could not load accounts.'}
+              {error instanceof Error ? error.message : t('accounts.couldNotLoad')}
             </p>
           </CardContent>
         </Card>
@@ -490,7 +504,7 @@ export default function AccountsPage() {
 
   return (
     <>
-      <PageHeader title="Accounts" description="Balances, institutions, and account types">
+      <PageHeader title={t('accounts.title')} description={t('accounts.description')}>
         <Dialog
           open={addOpen}
           onOpenChange={(open) => {
@@ -502,22 +516,24 @@ export default function AccountsPage() {
             render={
               <Button type="button" size="sm" className="gap-1.5">
                 <Plus className="h-4 w-4" />
-                Add account
+                {t('accounts.addAccount')}
               </Button>
             }
           />
           <DialogContent className="sm:max-w-md" showCloseButton>
             <form onSubmit={handleCreate}>
               <DialogHeader>
-                <DialogTitle>Add account</DialogTitle>
+                <DialogTitle>{t('accounts.addAccount')}</DialogTitle>
                 <DialogDescription>
-                  Create a new account. Balances can be updated later from transactions.
+                  {t('accounts.addDescription')}
                 </DialogDescription>
               </DialogHeader>
               <AccountFormFields
                 form={addForm}
                 onChange={setAddForm}
-                balanceLabel="Initial balance"
+                balanceLabel={t('accounts.initialBalance')}
+                selectItems={accountTypeSelectItems}
+                typeLabels={typeLabels}
               />
               <DialogFooter className="border-0 bg-transparent p-0 pt-2 sm:justify-end">
                 <Button
@@ -526,10 +542,10 @@ export default function AccountsPage() {
                   onClick={() => setAddOpen(false)}
                   disabled={createMut.isPending}
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </Button>
                 <Button type="submit" disabled={createMut.isPending || !addForm.name.trim()}>
-                  {createMut.isPending ? 'Saving…' : 'Create account'}
+                  {createMut.isPending ? t('common.saving') : t('accounts.createAccount')}
                 </Button>
               </DialogFooter>
             </form>
@@ -546,9 +562,9 @@ export default function AccountsPage() {
               <Wallet className="h-7 w-7 text-muted-foreground" />
             </div>
             <div className="max-w-sm space-y-1">
-              <p className="font-medium">No accounts yet</p>
+              <p className="font-medium">{t('accounts.noAccounts')}</p>
               <p className="text-sm text-muted-foreground">
-                Add your first account to track balances and assign transactions.
+                {t('accounts.noAccountsHint')}
               </p>
             </div>
             <Button
@@ -559,7 +575,7 @@ export default function AccountsPage() {
               }}
             >
               <Plus className="h-4 w-4" />
-              Add account
+              {t('accounts.addAccount')}
             </Button>
           </CardContent>
         </Card>
@@ -573,8 +589,8 @@ export default function AccountsPage() {
               <section key={type} className="space-y-4">
                 <div className="flex items-center gap-2 border-b border-border pb-2">
                   <SectionIcon className="h-5 w-5 text-muted-foreground" />
-                  <h2 className="text-lg font-semibold tracking-tight">{TYPE_LABELS[type]}</h2>
-                  <Badge variant="outline" className="ml-1 font-normal">
+                  <h2 className="text-lg font-semibold tracking-tight">{typeLabels[type]}</h2>
+                  <Badge variant="outline" className="ms-1 font-normal">
                     {list.length}
                   </Badge>
                 </div>
@@ -584,6 +600,7 @@ export default function AccountsPage() {
                       key={account.id}
                       account={account}
                       currency={currency}
+                      typeLabels={typeLabels}
                       onEdit={openEdit}
                       onDelete={openDelete}
                     />
@@ -605,13 +622,15 @@ export default function AccountsPage() {
         <DialogContent className="sm:max-w-md" showCloseButton>
           <form onSubmit={handleUpdate}>
             <DialogHeader>
-              <DialogTitle>Edit account</DialogTitle>
-              <DialogDescription>Update details for {editing?.name ?? 'this account'}.</DialogDescription>
+              <DialogTitle>{t('accounts.editAccount')}</DialogTitle>
+              <DialogDescription>{t('accounts.editDescription', { name: editing?.name ?? '' })}</DialogDescription>
             </DialogHeader>
             <AccountFormFields
               form={editForm}
               onChange={setEditForm}
-              balanceLabel="Balance"
+              balanceLabel={t('common.value')}
+              selectItems={accountTypeSelectItems}
+              typeLabels={typeLabels}
             />
             <DialogFooter className="border-0 bg-transparent p-0 pt-2 sm:justify-end">
               <Button
@@ -620,10 +639,10 @@ export default function AccountsPage() {
                 onClick={() => setEditOpen(false)}
                 disabled={updateMut.isPending}
               >
-                Cancel
+                {t('common.cancel')}
               </Button>
               <Button type="submit" disabled={updateMut.isPending || !editForm.name.trim()}>
-                {updateMut.isPending ? 'Saving…' : 'Save changes'}
+                {updateMut.isPending ? t('common.saving') : t('common.saveChanges')}
               </Button>
             </DialogFooter>
           </form>
@@ -639,19 +658,17 @@ export default function AccountsPage() {
       >
         <DialogContent className="sm:max-w-sm" showCloseButton>
           <DialogHeader>
-            <DialogTitle>Delete account?</DialogTitle>
+            <DialogTitle>{t('accounts.deleteAccountTitle')}</DialogTitle>
             <DialogDescription>
-              This will permanently remove{' '}
-              <span className="font-medium text-foreground">{deleting?.name}</span> and cannot be undone.
-              Linked transactions may be affected depending on your database rules.
+              {t('accounts.deleteAccountMessage', { name: deleting?.name ?? '' })}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="border-0 bg-transparent p-0 pt-2 sm:justify-end">
             <Button type="button" variant="outline" onClick={() => setDeleteOpen(false)} disabled={deleteMut.isPending}>
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button type="button" variant="destructive" onClick={handleDeleteConfirm} disabled={deleteMut.isPending}>
-              {deleteMut.isPending ? 'Deleting…' : 'Delete'}
+              {deleteMut.isPending ? t('common.deleting') : t('common.delete')}
             </Button>
           </DialogFooter>
         </DialogContent>

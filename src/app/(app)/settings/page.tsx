@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useRef, useState, type ChangeEvent } from 'react'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { format } from 'date-fns'
 import {
   Settings,
@@ -27,6 +28,7 @@ import {
   useDeleteCategory,
 } from '@/lib/hooks/use-categories'
 import { createClient } from '@/lib/supabase/client'
+import { TRANSACTION_LIST_SELECT } from '@/lib/supabase/transaction-query'
 import type { Category, CategoryType, Transaction } from '@/types/database'
 import { Button } from '@/components/ui/button'
 import {
@@ -73,7 +75,7 @@ async function fetchAllTransactions(): Promise<Transaction[]> {
   for (;;) {
     const { data, error } = await supabase
       .from('transactions')
-      .select('*, account:accounts(*), category:categories(*)')
+      .select(TRANSACTION_LIST_SELECT)
       .order('date', { ascending: false })
       .range(offset, offset + pageSize - 1)
     if (error) throw error
@@ -139,11 +141,6 @@ const BACKUP_TABLES = [
 ] as const
 
 const SETTINGS_CURRENCY_SELECT_ITEMS = selectItemsFromCurrencies(CURRENCIES)
-
-const CATEGORY_FORM_TYPE_ITEMS = selectItemsFromMap(['income', 'expense'], {
-  income: 'Income',
-  expense: 'Expense',
-})
 
 type BackupTable = (typeof BACKUP_TABLES)[number]
 
@@ -274,6 +271,7 @@ const emptyCategoryForm = (): CategoryFormState => ({
 })
 
 export default function SettingsPage() {
+  const t = useTranslations()
   const router = useRouter()
   const { data: profile, isLoading: profileLoading } = useProfile()
   const updateProfile = useUpdateProfile()
@@ -301,6 +299,15 @@ export default function SettingsPage() {
   const expenseCategories = useMemo(
     () => categories.filter((c) => c.type === 'expense'),
     [categories]
+  )
+
+  const categoryFormTypeItems = useMemo(
+    () =>
+      selectItemsFromMap(['income', 'expense'], {
+        income: t('common.income'),
+        expense: t('common.expense'),
+      }),
+    [t]
   )
 
   const openNewCategory = useCallback(() => {
@@ -360,25 +367,25 @@ export default function SettingsPage() {
       const csv = transactionsToCsv(rows)
       const fname = `transactions-export-${format(new Date(), 'yyyy-MM-dd')}.csv`
       triggerDownload(fname, csv, 'text/csv;charset=utf-8')
-      toast.success(`Exported ${rows.length} transactions`)
+      toast.success(t('settings.exportedCount', { count: rows.length }))
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Export failed')
+      toast.error(e instanceof Error ? e.message : t('settings.exportFailed'))
     } finally {
       setExporting(false)
     }
-  }, [])
+  }, [t])
 
   const handleDownloadBackup = useCallback(async () => {
     setBackupDownloading(true)
     try {
       await downloadFullBackup()
-      toast.success('Backup downloaded')
+      toast.success(t('settings.backupDownloaded'))
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Backup failed')
+      toast.error(e instanceof Error ? e.message : t('settings.backupFailed'))
     } finally {
       setBackupDownloading(false)
     }
-  }, [])
+  }, [t])
 
   const handleRestoreFileChange = useCallback(
     async (e: ChangeEvent<HTMLInputElement>) => {
@@ -390,14 +397,14 @@ export default function SettingsPage() {
         const text = await file.text()
         const parsed: unknown = JSON.parse(text)
         await restoreFromBackupPayload(parsed)
-        toast.success('Backup restored')
+        toast.success(t('settings.backupRestored'))
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : 'Restore failed')
+        toast.error(err instanceof Error ? err.message : t('settings.restoreFailed'))
       } finally {
         setRestoring(false)
       }
     },
-    []
+    [t]
   )
 
   const handleDeleteAllData = useCallback(async () => {
@@ -431,25 +438,25 @@ export default function SettingsPage() {
       const { error: profileErr } = await supabase.from('profiles').delete().eq('id', uid)
       if (profileErr) throw profileErr
 
-      toast.success('All data removed')
+      toast.success(t('settings.allDataRemoved'))
       setDangerOpen(false)
       setDangerConfirm('')
       await supabase.auth.signOut()
       router.push('/login')
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Delete failed')
+      toast.error(e instanceof Error ? e.message : t('settings.deleteFailed'))
     } finally {
       setDeletingAll(false)
     }
-  }, [dangerConfirm, router])
+  }, [dangerConfirm, router, t])
 
   const loading = profileLoading || categoriesLoading
 
   return (
     <div className="pb-24 md:pb-8 space-y-8">
       <PageHeader
-        title="Settings"
-        description="Preferences, categories, exports, and account data."
+        title={t('settings.title')}
+        description={t('settings.description')}
       >
         <Settings className="size-8 text-muted-foreground hidden sm:block shrink-0" aria-hidden />
       </PageHeader>
@@ -458,16 +465,16 @@ export default function SettingsPage() {
         <CardHeader>
           <div className="flex items-center gap-2">
             <Palette className="size-4 text-muted-foreground" />
-            <CardTitle className="text-base">Currency</CardTitle>
+            <CardTitle className="text-base">{t('settings.currency')}</CardTitle>
           </div>
-          <CardDescription>Used for display formatting across the app.</CardDescription>
+          <CardDescription>{t('settings.currencyDescription')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3 max-w-sm">
           {profileLoading ? (
             <Skeleton className="h-10 w-full" />
           ) : (
             <>
-              <Label>Preferred currency</Label>
+              <Label>{t('settings.preferredCurrency')}</Label>
               <Select
                 value={profile?.currency ?? 'ILS'}
                 onValueChange={(code) => {
@@ -497,13 +504,13 @@ export default function SettingsPage() {
           <div>
             <div className="flex items-center gap-2">
               <Tag className="size-4 text-muted-foreground" />
-              <CardTitle className="text-base">Categories</CardTitle>
+              <CardTitle className="text-base">{t('settings.categories')}</CardTitle>
             </div>
-            <CardDescription>Income and expense labels used in transactions and budgets.</CardDescription>
+            <CardDescription>{t('settings.categoriesDescription')}</CardDescription>
           </div>
           <Button size="sm" className="gap-1.5 shrink-0" onClick={openNewCategory}>
             <Plus className="size-4" />
-            Add
+            {t('common.add')}
           </Button>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -515,21 +522,23 @@ export default function SettingsPage() {
           ) : (
             <>
               <CategoryGroup
-                title="Income"
+                title={t('common.income')}
                 variant="income"
                 items={incomeCategories}
                 onEdit={openEditCategory}
                 onDelete={(id) => deleteCategory.mutate(id)}
                 deletePending={deleteCategory.isPending}
+                noCategories={t('settings.noCategories')}
               />
               <Separator />
               <CategoryGroup
-                title="Expense"
+                title={t('common.expense')}
                 variant="expense"
                 items={expenseCategories}
                 onEdit={openEditCategory}
                 onDelete={(id) => deleteCategory.mutate(id)}
                 deletePending={deleteCategory.isPending}
+                noCategories={t('settings.noCategories')}
               />
             </>
           )}
@@ -540,14 +549,14 @@ export default function SettingsPage() {
         <CardHeader>
           <div className="flex items-center gap-2">
             <Download className="size-4 text-muted-foreground" />
-            <CardTitle className="text-base">Export data</CardTitle>
+            <CardTitle className="text-base">{t('settings.exportData')}</CardTitle>
           </div>
-          <CardDescription>Download all transactions as a CSV file.</CardDescription>
+          <CardDescription>{t('settings.exportDescription')}</CardDescription>
         </CardHeader>
         <CardContent>
           <Button variant="outline" className="gap-2" onClick={handleExportCsv} disabled={exporting}>
             <Download className="size-4" />
-            {exporting ? 'Exporting…' : 'Download transactions CSV'}
+            {exporting ? t('settings.exporting') : t('settings.downloadCsv')}
           </Button>
         </CardContent>
       </Card>
@@ -556,11 +565,10 @@ export default function SettingsPage() {
         <CardHeader>
           <div className="flex items-center gap-2">
             <DatabaseBackup className="size-4 text-muted-foreground" />
-            <CardTitle className="text-base">Backup &amp; restore</CardTitle>
+            <CardTitle className="text-base">{t('settings.backupRestore')}</CardTitle>
           </div>
           <CardDescription>
-            Download all tables as one JSON file, or restore from a previous backup. Existing rows with
-            the same id are updated.
+            {t('settings.backupDescription')}
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-center sm:flex-wrap">
@@ -571,7 +579,7 @@ export default function SettingsPage() {
             disabled={backupDownloading || restoring}
           >
             <DatabaseBackup className="size-4" />
-            {backupDownloading ? 'Preparing…' : 'Download backup'}
+            {backupDownloading ? t('settings.preparing') : t('settings.downloadBackup')}
           </Button>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <input
@@ -588,9 +596,9 @@ export default function SettingsPage() {
               disabled={restoring || backupDownloading}
               onClick={() => restoreInputRef.current?.click()}
             >
-              {restoring ? 'Restoring…' : 'Restore from backup'}
+              {restoring ? t('settings.restoring') : t('settings.restoreFromBackup')}
             </Button>
-            <span className="text-xs text-muted-foreground">Choose a .json file exported from this app.</span>
+            <span className="text-xs text-muted-foreground">{t('settings.restoreHelper')}</span>
           </div>
         </CardContent>
       </Card>
@@ -600,18 +608,18 @@ export default function SettingsPage() {
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div className="flex items-center gap-2">
               <ImageIcon className="size-4 text-muted-foreground" />
-              <CardTitle className="text-base">Receipt uploads</CardTitle>
+              <CardTitle className="text-base">{t('settings.receiptUploads')}</CardTitle>
             </div>
             <Badge
               variant="secondary"
               className="shrink-0 pointer-events-none opacity-50 select-none"
               aria-disabled
             >
-              Coming soon
+              {t('settings.comingSoon')}
             </Badge>
           </div>
           <CardDescription>
-            Receipt uploads — Coming soon. Attach receipt photos to transactions using Supabase Storage.
+            {t('settings.receiptDescription')}
           </CardDescription>
         </CardHeader>
       </Card>
@@ -620,16 +628,16 @@ export default function SettingsPage() {
         <CardHeader>
           <div className="flex items-center gap-2 text-destructive">
             <AlertTriangle className="size-4" />
-            <CardTitle className="text-base">Danger zone</CardTitle>
+            <CardTitle className="text-base">{t('settings.dangerZone')}</CardTitle>
           </div>
           <CardDescription>
-            Permanently delete all financial data for your account. This cannot be undone.
+            {t('settings.dangerDescription')}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Button variant="destructive" className="gap-2" onClick={() => setDangerOpen(true)}>
             <Trash2 className="size-4" />
-            Delete all my data
+            {t('settings.deleteAllData')}
           </Button>
         </CardContent>
       </Card>
@@ -637,39 +645,39 @@ export default function SettingsPage() {
       <Dialog open={categoryDialogOpen} onOpenChange={setCategoryDialogOpen}>
         <DialogContent className="sm:max-w-md" showCloseButton>
           <DialogHeader>
-            <DialogTitle>{editing ? 'Edit category' : 'New category'}</DialogTitle>
+            <DialogTitle>{editing ? t('settings.editCategory') : t('settings.newCategory')}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-3 py-2">
             <div className="grid gap-2">
-              <Label htmlFor="cat-name">Name</Label>
+              <Label htmlFor="cat-name">{t('common.name')}</Label>
               <Input
                 id="cat-name"
                 value={categoryForm.name}
                 onChange={(e) => setCategoryForm((f) => ({ ...f, name: e.target.value }))}
-                placeholder="Groceries"
+                placeholder={t('settings.namePlaceholder')}
               />
             </div>
             <div className="grid gap-2">
-              <Label>Type</Label>
+              <Label>{t('common.type')}</Label>
               <Select
                 value={categoryForm.type}
                 onValueChange={(v) =>
                   setCategoryForm((f) => ({ ...f, type: (v ?? 'expense') as CategoryType }))
                 }
-                items={CATEGORY_FORM_TYPE_ITEMS}
+                items={categoryFormTypeItems}
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="income">Income</SelectItem>
-                  <SelectItem value="expense">Expense</SelectItem>
+                  <SelectItem value="income">{t('common.income')}</SelectItem>
+                  <SelectItem value="expense">{t('common.expense')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="grid gap-2">
-                <Label htmlFor="cat-color">Color</Label>
+                <Label htmlFor="cat-color">{t('common.color')}</Label>
                 <Input
                   id="cat-color"
                   type="color"
@@ -679,19 +687,19 @@ export default function SettingsPage() {
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="cat-icon">Icon</Label>
+                <Label htmlFor="cat-icon">{t('settings.icon')}</Label>
                 <Input
                   id="cat-icon"
                   value={categoryForm.icon}
                   onChange={(e) => setCategoryForm((f) => ({ ...f, icon: e.target.value }))}
-                  placeholder="emoji or label"
+                  placeholder={t('settings.iconPlaceholder')}
                 />
               </div>
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCategoryDialogOpen(false)}>
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button
               onClick={saveCategory}
@@ -701,7 +709,7 @@ export default function SettingsPage() {
                 updateCategory.isPending
               }
             >
-              Save
+              {t('common.save')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -710,35 +718,34 @@ export default function SettingsPage() {
       <Dialog open={dangerOpen} onOpenChange={(o) => !deletingAll && setDangerOpen(o)}>
         <DialogContent className="sm:max-w-md" showCloseButton={!deletingAll}>
           <DialogHeader>
-            <DialogTitle className="text-destructive">Delete all data?</DialogTitle>
+            <DialogTitle className="text-destructive">{t('settings.deleteAllTitle')}</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            This removes transactions, accounts, categories, budgets, savings goals, investments,
-            recurring rules, and your profile row. You will be signed out.
+            {t('settings.deleteAllWarning')}
           </p>
           <div className="grid gap-2">
             <Label htmlFor="del-confirm">
-              Type <span className="font-mono font-semibold">DELETE</span> to confirm
+              {t('settings.typeDeleteConfirm', { keyword: t('settings.deleteKeyword') })}
             </Label>
             <Input
               id="del-confirm"
               value={dangerConfirm}
               onChange={(e) => setDangerConfirm(e.target.value)}
-              placeholder="DELETE"
+              placeholder={t('settings.deleteKeyword')}
               autoComplete="off"
               disabled={deletingAll}
             />
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDangerOpen(false)} disabled={deletingAll}>
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button
               variant="destructive"
               onClick={handleDeleteAllData}
               disabled={dangerConfirm !== 'DELETE' || deletingAll}
             >
-              {deletingAll ? 'Deleting…' : 'Delete everything'}
+              {deletingAll ? t('common.deleting') : t('settings.deleteEverything')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -754,6 +761,7 @@ function CategoryGroup({
   onEdit,
   onDelete,
   deletePending,
+  noCategories,
 }: {
   title: string
   variant: 'income' | 'expense'
@@ -761,6 +769,7 @@ function CategoryGroup({
   onEdit: (c: Category) => void
   onDelete: (id: string) => void
   deletePending: boolean
+  noCategories: string
 }) {
   return (
     <div className="space-y-3">
@@ -778,7 +787,7 @@ function CategoryGroup({
         </Badge>
       </div>
       {items.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No categories yet.</p>
+        <p className="text-sm text-muted-foreground">{noCategories}</p>
       ) : (
         <ul className="space-y-2">
           {items.map((c) => (
