@@ -32,6 +32,8 @@ export interface Category {
   id: string;
   user_id: string;
   name: string;
+  /** Hebrew UI label when locale is Hebrew; optional */
+  name_he?: string | null;
   type: CategoryType;
   icon: string;
   color: string;
@@ -99,6 +101,21 @@ export interface Investment {
   currency: string;
   created_at: string;
   updated_at: string;
+}
+
+/** Used by optional auto-categorization rules (migration 006 not in this commit). */
+export type RuleMatchType = 'contains' | 'starts_with' | 'exact';
+
+export interface CategorizationRule {
+  id: string;
+  user_id: string;
+  pattern: string;
+  match_type: RuleMatchType;
+  category_id: string;
+  priority: number;
+  is_active: boolean;
+  created_at: string;
+  category?: Category;
 }
 
 export interface RecurringRule {

@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useMemo, useState } from 'react'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { format, parseISO, startOfMonth, endOfMonth, isBefore, isAfter } from 'date-fns'
 import {
   Plus,
@@ -76,8 +76,9 @@ import { cn } from '@/lib/utils'
 import {
   selectItemsFromEntities,
   selectItemsFromMap,
-  selectItemsWithNone,
+  selectItemsWithNoneCategories,
 } from '@/lib/utils/select-items'
+import { getCategoryDisplayName } from '@/lib/utils/category-display-name'
 
 const NONE = '__none__'
 
@@ -187,6 +188,7 @@ const defaultRuleForm = (): RuleForm => ({
 
 export default function PlanningPage() {
   const t = useTranslations()
+  const locale = useLocale()
   const currency = useCurrency()
 
   const RECURRING_FLOW_SELECT_ITEMS = useMemo(
@@ -329,8 +331,14 @@ export default function PlanningPage() {
   const recurringAccountItems = useMemo(() => selectItemsFromEntities(accounts), [accounts])
 
   const recurringCategoryItems = useMemo(
-    () => selectItemsWithNone(NONE, 'None', categories.filter((c) => c.type === form.type)),
-    [categories, form.type]
+    () =>
+      selectItemsWithNoneCategories(
+        NONE,
+        t('common.none'),
+        categories.filter((c) => c.type === form.type),
+        locale
+      ),
+    [categories, form.type, t, locale]
   )
 
   return (
@@ -385,7 +393,7 @@ export default function PlanningPage() {
                       <TableRow>
                         <TableHead>{t('common.description')}</TableHead>
                         <TableHead>{t('common.type')}</TableHead>
-                        <TableHead className="text-right">{t('common.amount')}</TableHead>
+                        <TableHead className="text-end">{t('common.amount')}</TableHead>
                         <TableHead>{t('planning.frequency')}</TableHead>
                         <TableHead>{t('common.account')}</TableHead>
                         <TableHead>{t('planning.next')}</TableHead>
@@ -421,7 +429,7 @@ export default function PlanningPage() {
                                 <Badge variant="secondary">{rule.type}</Badge>
                               )}
                             </TableCell>
-                            <TableCell className="text-right tabular-nums">
+                            <TableCell className="text-end tabular-nums">
                               {formatCurrency(rule.amount, currency)}
                             </TableCell>
                             <TableCell className="capitalize">{rule.frequency}</TableCell>
@@ -574,7 +582,7 @@ export default function PlanningPage() {
                       <SelectItem value={NONE}>{t('common.none')}</SelectItem>
                       {categoriesByType(form.type).map((c) => (
                         <SelectItem key={c.id} value={c.id}>
-                          {c.name}
+                          {getCategoryDisplayName(c, locale)}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -679,31 +687,31 @@ export default function PlanningPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>{t('planning.month')}</TableHead>
-                      <TableHead className="text-right">{t('common.income')}</TableHead>
-                      <TableHead className="text-right">{t('common.expense')}</TableHead>
-                      <TableHead className="text-right">{t('transactions.net')}</TableHead>
-                      <TableHead className="text-right">{t('planning.cumulative')}</TableHead>
+                      <TableHead className="text-end">{t('common.income')}</TableHead>
+                      <TableHead className="text-end">{t('common.expense')}</TableHead>
+                      <TableHead className="text-end">{t('transactions.net')}</TableHead>
+                      <TableHead className="text-end">{t('planning.cumulative')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {projectionRows.map((r) => (
                       <TableRow key={r.key}>
                         <TableCell>{r.label}</TableCell>
-                        <TableCell className="text-right tabular-nums text-emerald-600 dark:text-emerald-400">
+                        <TableCell className="text-end tabular-nums text-emerald-600 dark:text-emerald-400">
                           {formatCurrency(r.income, currency)}
                         </TableCell>
-                        <TableCell className="text-right tabular-nums text-red-600 dark:text-red-400">
+                        <TableCell className="text-end tabular-nums text-red-600 dark:text-red-400">
                           {formatCurrency(r.expense, currency)}
                         </TableCell>
                         <TableCell
                           className={cn(
-                            'text-right tabular-nums font-medium',
+                            'text-end tabular-nums font-medium',
                             r.net >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'
                           )}
                         >
                           {formatCurrency(r.net, currency)}
                         </TableCell>
-                        <TableCell className="text-right tabular-nums">
+                        <TableCell className="text-end tabular-nums">
                           {formatCurrency(r.cumulative, currency)}
                         </TableCell>
                       </TableRow>

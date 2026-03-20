@@ -213,6 +213,8 @@
     "editCategory": "ערוך קטגוריה",
     "newCategory": "קטגוריה חדשה",
     "namePlaceholder": "מכולת",
+    "categoryHebrewName": "שם בעברית (אופציונלי)",
+    "categoryHebrewPlaceholder": "לתצוגה בממשק בעברית",
     "iconPlaceholder": "אימוג'י או תווית",
     "icon": "אייקון",
     "noCategories": "אין קטגוריות עדיין.",

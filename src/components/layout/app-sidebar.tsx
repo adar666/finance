@@ -122,7 +122,7 @@ export function AppSidebar() {
                     </Link>
                   )}
                 />
-                <TooltipContent side="right">{item.label}</TooltipContent>
+                <TooltipContent side="inline-end">{item.label}</TooltipContent>
               </Tooltip>
             )
           }
@@ -164,7 +164,7 @@ export function AppSidebar() {
                   </Link>
                 )}
               />
-              <TooltipContent side="right">{t('nav.settings')}</TooltipContent>
+              <TooltipContent side="inline-end">{t('nav.settings')}</TooltipContent>
             </Tooltip>
             <Tooltip>
               <TooltipTrigger
@@ -186,7 +186,7 @@ export function AppSidebar() {
                   </button>
                 )}
               />
-              <TooltipContent side="right">
+              <TooltipContent side="inline-end">
                 {privacyOn ? t('sidebar.showAmounts') : t('sidebar.hideAmounts')}
               </TooltipContent>
             </Tooltip>
@@ -209,7 +209,7 @@ export function AppSidebar() {
                   </button>
                 )}
               />
-              <TooltipContent side="right">{themeLabel}</TooltipContent>
+              <TooltipContent side="inline-end">{themeLabel}</TooltipContent>
             </Tooltip>
             <LocaleToggle className="min-h-11 w-full px-2 py-2 rounded-lg text-base text-muted-foreground hover:text-foreground hover:bg-accent transition-colors" />
             <Tooltip>
@@ -231,7 +231,7 @@ export function AppSidebar() {
                   </button>
                 )}
               />
-              <TooltipContent side="right">{t('sidebar.signOut')}</TooltipContent>
+              <TooltipContent side="inline-end">{t('sidebar.signOut')}</TooltipContent>
             </Tooltip>
           </>
         ) : (
@@ -282,7 +282,9 @@ export function AppSidebar() {
         onClick={toggleCollapsed}
         className="absolute -end-3 top-20 flex h-6 w-6 items-center justify-center rounded-full border bg-card text-muted-foreground hover:text-foreground shadow-sm transition-colors"
       >
-        <ChevronLeft className={cn('h-3 w-3 transition-transform', collapsed && 'rotate-180')} />
+        <ChevronLeft
+          className={cn('h-3 w-3 transition-transform rtl:rotate-180', collapsed && 'rotate-180')}
+        />
       </button>
     </aside>
   )

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   selectItemsFromCurrencies,
+  selectItemsFromCategories,
   selectItemsFromEntities,
   selectItemsFromMap,
   selectItemsWithNone,
@@ -26,6 +27,17 @@ describe('selectItemsWithNone', () => {
       { value: '__x__', label: '—' },
       { value: '1', label: 'One' },
     ])
+  })
+})
+
+describe('selectItemsFromCategories', () => {
+  it('uses Hebrew label when locale is he', () => {
+    expect(
+      selectItemsFromCategories(
+        [{ id: '1', name: 'Groceries', name_he: 'מצרכים' }],
+        'he'
+      )
+    ).toEqual([{ value: '1', label: 'מצרכים' }])
   })
 })
 

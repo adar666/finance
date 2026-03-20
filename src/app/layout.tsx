@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import { headers } from 'next/headers'
-import { Plus_Jakarta_Sans, Heebo, JetBrains_Mono } from 'next/font/google'
+import { Plus_Jakarta_Sans, Rubik, JetBrains_Mono } from 'next/font/google'
 import { NextIntlClientProvider } from 'next-intl'
 import { getLocale, getMessages } from 'next-intl/server'
 import { StagingBannerBar } from '@/components/layout/staging-banner'
@@ -17,7 +17,7 @@ const sans = Plus_Jakarta_Sans({
   weight: ['400', '500', '600', '700'],
 })
 
-const heebo = Heebo({
+const rubik = Rubik({
   subsets: ['hebrew', 'latin'],
   variable: '--font-hebrew-ui',
   display: 'swap',
@@ -51,13 +51,13 @@ export default async function RootLayout({
   const locale = await getLocale()
   const messages = await getMessages()
   const isRtl = rtlLocales.has(locale)
-  const fontVar = isRtl ? heebo.variable : sans.variable
 
   return (
     <html lang={locale} dir={isRtl ? 'rtl' : 'ltr'} suppressHydrationWarning>
       <body
         className={cn(
-          fontVar,
+          sans.variable,
+          rubik.variable,
           mono.variable,
           'font-sans min-h-screen antialiased',
           showStagingBanner && 'pt-12'

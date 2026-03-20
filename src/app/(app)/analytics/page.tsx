@@ -24,7 +24,8 @@ import { useCategories } from '@/lib/hooks/use-categories'
 import { useCurrency } from '@/lib/hooks/use-currency'
 import { formatCurrency, formatCompact, formatPercent } from '@/lib/utils/currency'
 import type { Category, Transaction } from '@/types/database'
-import { useTranslations } from 'next-intl'
+import { getCategoryDisplayName } from '@/lib/utils/category-display-name'
+import { useLocale, useTranslations } from 'next-intl'
 
 const CHART_PALETTE = [
   '#2dd4bf',
@@ -61,14 +62,15 @@ function categoryNameForId(
   categories: Category[],
   fallbackIndex: number,
   uncategorizedLabel: string,
-  categoryLabel: string
+  categoryLabel: string,
+  locale: string
 ): { name: string; color: string } {
   if (id === UNCATEGORIZED_ID) {
     return { name: uncategorizedLabel, color: CHART_PALETTE[CHART_PALETTE.length - 1] }
   }
   const c = categories.find((x) => x.id === id)
   return {
-    name: c?.name ?? categoryLabel,
+    name: c ? getCategoryDisplayName(c, locale) : categoryLabel,
     color: c?.color ?? CHART_PALETTE[fallbackIndex % CHART_PALETTE.length],
   }
 }
@@ -160,6 +162,7 @@ function StackedCategoryTooltip({
 
 export default function AnalyticsPage() {
   const t = useTranslations()
+  const locale = useLocale()
   const currency = useCurrency()
   const periodKey = format(startOfMonth(new Date()), 'yyyy-MM')
 
@@ -230,7 +233,14 @@ export default function AnalyticsPage() {
     const topSet = new Set(topIds)
 
     const series: StackedSeries[] = topIds.map((id, i) => {
-      const { name, color } = categoryNameForId(id, expenseCategories, i, t('common.uncategorized'), t('common.category'))
+      const { name, color } = categoryNameForId(
+        id,
+        expenseCategories,
+        i,
+        t('common.uncategorized'),
+        t('common.category'),
+        locale
+      )
       return { dataKey: `s${i}`, name, color }
     })
     series.push({ dataKey: 'other', name: t('analytics.otherCategories'), color: '#94a3b8' })
@@ -266,7 +276,7 @@ export default function AnalyticsPage() {
     })
 
     return { stackedSeries: series, stackedMonthRows: rows }
-  }, [transactions, expenseCategories, last6MonthKeys, t])
+  }, [transactions, expenseCategories, last6MonthKeys, t, locale])
 
   /** Pareto / concentration — last 12 months expenses */
   const spendingConcentration = useMemo(() => {
@@ -278,7 +288,14 @@ export default function AnalyticsPage() {
       const mk = t.date.slice(0, 7)
       if (!last12MonthKeys.includes(mk)) continue
       const id = t.category_id ?? UNCATEGORIZED_ID
-      const { name, color } = categoryNameForId(id, expenseCategories, totals.size, uncatLabel, catLabel)
+      const { name, color } = categoryNameForId(
+        id,
+        expenseCategories,
+        totals.size,
+        uncatLabel,
+        catLabel,
+        locale
+      )
       const prev = totals.get(id)
       if (prev) prev.total += t.amount
       else totals.set(id, { name, color, total: t.amount })
@@ -295,7 +312,7 @@ export default function AnalyticsPage() {
     })
     const top3Share = grand > 0 ? withPct.slice(0, 3).reduce((s, x) => s + x.pct, 0) : 0
     return { rows: withPct, grandTotal: grand, top3SharePct: top3Share }
-  }, [transactions, expenseCategories, last12MonthKeys, t])
+  }, [transactions, expenseCategories, last12MonthKeys, t, locale])
 
   const avgSavingsRate6m = useMemo(() => {
     const last6 = monthlyIncomeExpense.slice(-6)
@@ -312,7 +329,7 @@ export default function AnalyticsPage() {
     for (const t of transactions as Transaction[]) {
       if (t.type !== 'expense') continue
       const id = t.category_id ?? UNCATEGORIZED_ID
-      const name = t.category?.name ?? uncatLabel
+      const name = t.category ? getCategoryDisplayName(t.category, locale) : uncatLabel
       const color =
         t.category?.color ??
         CHART_PALETTE[Math.abs(id.split('').reduce((a, ch) => a + ch.charCodeAt(0), 0)) % CHART_PALETTE.length]
@@ -326,7 +343,7 @@ export default function AnalyticsPage() {
       .slice(0, 10)
     const max = list[0]?.total ?? 1
     return list.map((row) => ({ ...row, ratio: max > 0 ? Math.round((row.total / max) * 100) : 0 }))
-  }, [transactions, t])
+  }, [transactions, t, locale])
 
   const chartTooltipFormatter = (value: unknown) => {
     const n = typeof value === 'number' ? value : Number(value)
