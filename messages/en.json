@@ -191,6 +191,7 @@
     "dateRange": "Date range",
     "noTransactionsYet": "No transactions yet",
     "addOrImport": "Add a transaction or import a CSV to get started.",
+    "deleteDialogTitle": "Delete transaction?",
     "deleteConfirm": "Delete this transaction? This cannot be undone.",
     "deleteAriaLabel": "Delete transaction",
     "failedToLoad": "Failed to load transactions",
@@ -317,6 +318,7 @@
     "budget": "Budget",
     "spent": "Spent",
     "overLimit": "{amount} over the limit",
+    "deleteDialogTitle": "Delete budget?",
     "deleteConfirm": "Delete this budget? This cannot be undone.",
     "editBudgetAriaLabel": "Edit budget",
     "deleteBudgetAriaLabel": "Delete budget"
@@ -432,6 +434,7 @@
     "growthOverTime": "Growth over time",
     "growthHint": "End-of-year balance (yearly steps)",
     "balance": "Balance",
+    "deleteRuleDialogTitle": "Delete recurring rule?",
     "deleteRuleConfirm": "Delete this recurring rule?"
   },
   "accounts": {

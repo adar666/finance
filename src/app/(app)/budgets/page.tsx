@@ -21,6 +21,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
@@ -175,6 +177,8 @@ export default function BudgetsPage() {
   const [editing, setEditing] = useState<Budget | null>(null)
   const [editAmount, setEditAmount] = useState('')
   const [editPeriod, setEditPeriod] = useState<BudgetPeriod>('monthly')
+  const [deleteBudgetOpen, setDeleteBudgetOpen] = useState(false)
+  const [pendingBudgetDeleteId, setPendingBudgetDeleteId] = useState<string | null>(null)
 
   const resetAddForm = useCallback(() => {
     setFormCategoryId('')
@@ -235,9 +239,23 @@ export default function BudgetsPage() {
     )
   }
 
-  function handleDelete(id: string) {
-    if (!window.confirm(t('budgets.deleteConfirm'))) return
-    deleteBudget.mutate(id)
+  function openDeleteBudgetConfirm(id: string) {
+    setPendingBudgetDeleteId(id)
+    setDeleteBudgetOpen(true)
+  }
+
+  function closeDeleteBudgetConfirm() {
+    setDeleteBudgetOpen(false)
+    setPendingBudgetDeleteId(null)
+  }
+
+  function confirmDeleteBudget() {
+    if (!pendingBudgetDeleteId) return
+    deleteBudget.mutate(pendingBudgetDeleteId, {
+      onSettled: () => {
+        closeDeleteBudgetConfirm()
+      },
+    })
   }
 
   const loading = budgetsLoading || txsLoading
@@ -573,7 +591,7 @@ export default function BudgetsPage() {
                       className="text-muted-foreground hover:text-destructive"
                       aria-label={t('budgets.deleteBudgetAriaLabel')}
                       disabled={deleteBudget.isPending}
-                      onClick={() => handleDelete(b.id)}
+                      onClick={() => openDeleteBudgetConfirm(b.id)}
                     >
                       <Trash2 className="size-4" />
                     </Button>
@@ -641,6 +659,40 @@ export default function BudgetsPage() {
           })}
         </div>
       )}
+
+      <Dialog
+        open={deleteBudgetOpen}
+        onOpenChange={(open) => {
+          if (!open && !deleteBudget.isPending) closeDeleteBudgetConfirm()
+        }}
+      >
+        <DialogContent className="sm:max-w-md" showCloseButton={!deleteBudget.isPending}>
+          <DialogHeader>
+            <DialogTitle>{t('budgets.deleteDialogTitle')}</DialogTitle>
+            <DialogDescription>{t('budgets.deleteConfirm')}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="border-0 bg-transparent p-0 sm:justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={closeDeleteBudgetConfirm}
+              disabled={deleteBudget.isPending}
+            >
+              {t('common.cancel')}
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              className="gap-1.5"
+              onClick={confirmDeleteBudget}
+              disabled={deleteBudget.isPending}
+            >
+              {deleteBudget.isPending && <Loader2 className="size-4 animate-spin" />}
+              {t('common.delete')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -39,6 +39,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -187,6 +188,8 @@ export default function TransactionsPage() {
   }, [accounts])
 
   const [addOpen, setAddOpen] = useState(false)
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
 
   useEffect(() => {
     if (consumeAddTransactionQueryParam('/transactions')) {
@@ -527,9 +530,23 @@ export default function TransactionsPage() {
   const canProceedStep1Csv = Boolean(csvFile && csvRows.length > 0 && csvParseErrors.length === 0)
   const canProceedStep1Pdf = Boolean(csvFile && pdfTransactions.length > 0 && !pdfParsing)
 
-  function handleDelete(id: string) {
-    if (!window.confirm(t('transactions.deleteConfirm'))) return
-    deleteTx.mutate(id)
+  function openDeleteConfirm(id: string) {
+    setPendingDeleteId(id)
+    setDeleteConfirmOpen(true)
+  }
+
+  function closeDeleteConfirm() {
+    setDeleteConfirmOpen(false)
+    setPendingDeleteId(null)
+  }
+
+  function confirmDeleteTransaction() {
+    if (!pendingDeleteId) return
+    deleteTx.mutate(pendingDeleteId, {
+      onSettled: () => {
+        closeDeleteConfirm()
+      },
+    })
   }
 
   const headerSelectItem = (key: string) => (
@@ -1102,6 +1119,40 @@ export default function TransactionsPage() {
             </form>
           </DialogContent>
         </Dialog>
+
+        <Dialog
+          open={deleteConfirmOpen}
+          onOpenChange={(open) => {
+            if (!open && !deleteTx.isPending) closeDeleteConfirm()
+          }}
+        >
+          <DialogContent className="sm:max-w-md" showCloseButton={!deleteTx.isPending}>
+            <DialogHeader>
+              <DialogTitle>{t('transactions.deleteDialogTitle')}</DialogTitle>
+              <DialogDescription>{t('transactions.deleteConfirm')}</DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="border-0 bg-transparent p-0 sm:justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={closeDeleteConfirm}
+                disabled={deleteTx.isPending}
+              >
+                {t('common.cancel')}
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                className="gap-1.5"
+                onClick={confirmDeleteTransaction}
+                disabled={deleteTx.isPending}
+              >
+                {deleteTx.isPending && <Loader2 className="size-4 animate-spin" />}
+                {t('common.delete')}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </PageHeader>
 
       <div className="grid gap-3 sm:grid-cols-3">
@@ -1335,7 +1386,7 @@ export default function TransactionsPage() {
                             className="text-muted-foreground hover:text-destructive"
                             aria-label={t('transactions.deleteAriaLabel')}
                             disabled={deleteTx.isPending}
-                            onClick={() => handleDelete(tx.id)}
+                            onClick={() => openDeleteConfirm(tx.id)}
                           >
                             <Trash2 className="size-4" />
                           </Button>

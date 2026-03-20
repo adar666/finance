@@ -191,6 +191,7 @@
     "dateRange": "טווח תאריכים",
     "noTransactionsYet": "אין תנועות עדיין",
     "addOrImport": "הוסף תנועה או ייבא CSV כדי להתחיל.",
+    "deleteDialogTitle": "למחוק תנועה?",
     "deleteConfirm": "למחוק את התנועה? לא ניתן לבטל.",
     "deleteAriaLabel": "מחק תנועה",
     "failedToLoad": "טעינת תנועות נכשלה",
@@ -317,6 +318,7 @@
     "budget": "תקציב",
     "spent": "הוצאה",
     "overLimit": "{amount} מעל המגבלה",
+    "deleteDialogTitle": "למחוק תקציב?",
     "deleteConfirm": "למחוק תקציב זה? לא ניתן לבטל.",
     "editBudgetAriaLabel": "ערוך תקציב",
     "deleteBudgetAriaLabel": "מחק תקציב"
@@ -432,6 +434,7 @@
     "growthOverTime": "צמיחה לאורך זמן",
     "growthHint": "יתרת סוף שנה (צעדים שנתיים)",
     "balance": "יתרה",
+    "deleteRuleDialogTitle": "למחוק כלל חוזר?",
     "deleteRuleConfirm": "למחוק כלל חוזר זה?"
   },
   "accounts": {
