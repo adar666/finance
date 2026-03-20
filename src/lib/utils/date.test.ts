@@ -4,6 +4,7 @@ import {
   getCurrentMonthRange,
   getPreviousMonths,
   isInDateRange,
+  isDateStringWithinNextDays,
 } from './date'
 
 describe('formatDate', () => {
@@ -47,6 +48,21 @@ describe('getPreviousMonths', () => {
     expect(months[0].getUTCMonth()).toBe(3) // Apr
     expect(months[1].getUTCMonth()).toBe(4) // May
     expect(months[2].getUTCMonth()).toBe(5) // Jun
+  })
+})
+
+describe('isDateStringWithinNextDays', () => {
+  const now = new Date('2024-06-10T12:00:00.000Z')
+
+  it('includes today through end of now+days', () => {
+    expect(isDateStringWithinNextDays('2024-06-10', 7, now)).toBe(true)
+    expect(isDateStringWithinNextDays('2024-06-15', 7, now)).toBe(true)
+    expect(isDateStringWithinNextDays('2024-06-17', 7, now)).toBe(true)
+  })
+
+  it('excludes past and after window', () => {
+    expect(isDateStringWithinNextDays('2024-06-09', 7, now)).toBe(false)
+    expect(isDateStringWithinNextDays('2024-06-18', 7, now)).toBe(false)
   })
 })
 

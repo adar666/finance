@@ -35,6 +35,17 @@ describe('updateSession', () => {
     expect(res.headers.get('location')).toMatch(/\/login$/)
   })
 
+  it('redirects unauthenticated users from transactions add deep link to /login', async () => {
+    getUserMock.mockResolvedValue({ data: { user: null }, error: null })
+    const res = await updateSession(
+      new NextRequest(new URL('http://localhost:3000/transactions?add=1'))
+    )
+    expect(res.status).toBe(307)
+    const loc = res.headers.get('location') ?? ''
+    expect(loc).toMatch(/\/login/)
+    expect(loc).toContain('add=1')
+  })
+
   it('allows unauthenticated access to /login', async () => {
     getUserMock.mockResolvedValue({ data: { user: null }, error: null })
     const res = await updateSession(new NextRequest(new URL('http://localhost:3000/login')))

@@ -11,7 +11,7 @@ npm run test        # CI-style single run
 npm run test:watch  # watch mode while developing
 ```
 
-Tests live under `src/**/*.test.{ts,tsx}` (utils including `recurring-dates`, `sanitizeNextPath`, `cn`, UI smoke, `useCurrency`, `auth/callback`, `updateSession`).
+Tests live under `src/**/*.test.{ts,tsx}`: utils (`recurring-dates`, `recurring-upcoming`, `budget-health` + `computeBudgetAlertRows`, `dashboard-onboarding`, `transaction-add-query`, dates, CSV, currency, `cn`), **command palette** and **privacy mode** (RTL), `PageHeader`, `useCurrency`, `auth/callback`, `updateSession` (including `/transactions?add=1` redirect).
 
 ### E2E smoke (Playwright)
 
@@ -28,7 +28,7 @@ Optional env:
 - `PLAYWRIGHT_BASE_URL` — e.g. `http://127.0.0.1:3000` to reuse an already-running dev server (skips spawning `webServer` when the URL responds).
 - `PLAYWRIGHT_PORT` — port for the spawned server (default `3001`; ignored if `PLAYWRIGHT_BASE_URL` is set).
 
-**Scope today:** unauthenticated checks only (`/login` content, `/` → `/login`). Full magic-link login, authenticated dashboards, and Supabase RLS need a test inbox, auth bypass, or separate DB tests — see below.
+**Scope today:** unauthenticated smoke (`/login`, `/` → `/login`), plus **UX gate checks** in [`e2e/ux-features.spec.ts`](e2e/ux-features.spec.ts) (`/transactions?add=1` → login, no command palette on `/login` after Ctrl+K). Full magic-link login, authenticated palette/dashboard/privacy E2E, and Supabase RLS need a test inbox, auth **storageState**, or separate DB tests — see below.
 
 ### CI
 

@@ -17,11 +17,14 @@ import {
   ChevronLeft,
   Monitor,
   BarChart3,
+  Eye,
+  EyeOff,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { useTheme } from '@/components/theme-provider'
 import { cn } from '@/lib/utils'
+import { usePrivacyMode } from '@/components/layout/privacy-mode'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Separator } from '@/components/ui/separator'
 import { useState, useEffect } from 'react'
@@ -42,6 +45,7 @@ const navItems = [
 export function AppSidebar() {
   const pathname = usePathname()
   const router = useRouter()
+  const { enabled: privacyOn, toggle: togglePrivacy } = usePrivacyMode()
   const { theme, resolvedTheme, setTheme } = useTheme()
   const [collapsed, setCollapsed] = useState(false)
   const [userEmail, setUserEmail] = useState<string | null>(null)
@@ -167,6 +171,30 @@ export function AppSidebar() {
                     {...props}
                     onClick={(e) => {
                       props.onClick?.(e)
+                      togglePrivacy()
+                    }}
+                    className={cn(
+                      'min-h-11 flex items-center justify-center w-full px-2 py-2 rounded-lg text-base text-muted-foreground hover:text-foreground hover:bg-accent transition-colors',
+                      privacyOn && 'text-primary',
+                      props.className
+                    )}
+                  >
+                    {privacyOn ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                )}
+              />
+              <TooltipContent side="right">
+                {privacyOn ? 'Show amounts' : 'Hide amounts'}
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger
+                render={(props) => (
+                  <button
+                    type="button"
+                    {...props}
+                    onClick={(e) => {
+                      props.onClick?.(e)
                       cycleTheme()
                     }}
                     className={cn(
@@ -216,6 +244,17 @@ export function AppSidebar() {
               <Settings className="h-4 w-4" />
               Settings
             </Link>
+            <button
+              type="button"
+              onClick={togglePrivacy}
+              className={cn(
+                'min-h-11 flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-base font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors',
+                privacyOn && 'text-primary'
+              )}
+            >
+              {privacyOn ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              {privacyOn ? 'Show amounts' : 'Hide amounts'}
+            </button>
             <button
               onClick={cycleTheme}
               className="min-h-11 flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-base font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"

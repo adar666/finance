@@ -15,6 +15,7 @@ import {
   Receipt,
 } from 'lucide-react'
 import { PageHeader } from '@/components/layout/page-header'
+import { PrivateMoney } from '@/components/layout/privacy-mode'
 import { formatCurrency } from '@/lib/utils/currency'
 import { formatDate } from '@/lib/utils/date'
 import {
@@ -59,6 +60,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
+import { consumeAddTransactionQueryParam } from '@/lib/navigation/transaction-add-query'
 
 const PAGE_SIZE = 50
 const NONE = '__none__'
@@ -165,6 +167,13 @@ export default function TransactionsPage() {
   }, [accounts])
 
   const [addOpen, setAddOpen] = useState(false)
+
+  useEffect(() => {
+    if (consumeAddTransactionQueryParam('/transactions')) {
+      setAddOpen(true)
+    }
+  }, [])
+
   const [formType, setFormType] = useState<TransactionType>('expense')
   const [formAmount, setFormAmount] = useState('')
   const [formDescription, setFormDescription] = useState('')
@@ -581,7 +590,7 @@ export default function TransactionsPage() {
                                 row.type === 'expense' && 'text-red-600 dark:text-red-400'
                               )}
                             >
-                              {formatCurrency(row.amount, currency)}
+                              <PrivateMoney>{formatCurrency(row.amount, currency)}</PrivateMoney>
                             </TableCell>
                           </TableRow>
                         ))
@@ -769,7 +778,7 @@ export default function TransactionsPage() {
           <CardContent className="pt-4">
             <p className="text-xs font-medium text-muted-foreground">Total income</p>
             <p className="mt-1 text-lg font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
-              {formatCurrency(summary.income, currency)}
+              <PrivateMoney>{formatCurrency(summary.income, currency)}</PrivateMoney>
             </p>
           </CardContent>
         </Card>
@@ -777,7 +786,7 @@ export default function TransactionsPage() {
           <CardContent className="pt-4">
             <p className="text-xs font-medium text-muted-foreground">Total expenses</p>
             <p className="mt-1 text-lg font-semibold tabular-nums text-red-600 dark:text-red-400">
-              {formatCurrency(summary.expense, currency)}
+              <PrivateMoney>{formatCurrency(summary.expense, currency)}</PrivateMoney>
             </p>
           </CardContent>
         </Card>
@@ -790,7 +799,7 @@ export default function TransactionsPage() {
                 summary.net >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'
               )}
             >
-              {formatCurrency(summary.net, currency)}
+              <PrivateMoney>{formatCurrency(summary.net, currency)}</PrivateMoney>
             </p>
           </CardContent>
         </Card>
@@ -926,7 +935,11 @@ export default function TransactionsPage() {
                             Add a transaction or import a CSV to get started.
                           </p>
                         </div>
-                        <Button size="sm" className="gap-1.5" onClick={() => setAddOpen(true)}>
+                        <Button
+                          size="default"
+                          className="gap-1.5 min-h-11 w-full max-w-xs sm:w-auto"
+                          onClick={() => setAddOpen(true)}
+                        >
                           <Plus className="size-4" />
                           Add transaction
                         </Button>
@@ -974,10 +987,14 @@ export default function TransactionsPage() {
                             t.type === 'transfer' && 'text-foreground'
                           )}
                         >
-                          {t.type === 'expense' && '−'}
-                          {t.type === 'income' && '+'}
-                          {t.type === 'transfer' && '↔ '}
-                          {formatCurrency(t.amount, currency)}
+                          <PrivateMoney>
+                            <span>
+                              {t.type === 'expense' && '−'}
+                              {t.type === 'income' && '+'}
+                              {t.type === 'transfer' && '↔ '}
+                              {formatCurrency(t.amount, currency)}
+                            </span>
+                          </PrivateMoney>
                         </TableCell>
                         <TableCell className="text-right">
                           <Button

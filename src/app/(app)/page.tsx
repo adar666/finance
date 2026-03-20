@@ -1,9 +1,10 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import Link from 'next/link'
 import {
   startOfMonth,
+  endOfMonth,
   format,
   subDays,
   subMonths,
@@ -34,9 +35,12 @@ import {
   PiggyBank,
   Plus,
   ArrowRight,
+  CalendarClock,
+  AlertTriangle,
 } from 'lucide-react'
 
 import { PageHeader } from '@/components/layout/page-header'
+import { PrivateMoney, usePrivacyMode } from '@/components/layout/privacy-mode'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { buttonVariants } from '@/components/ui/button'
@@ -50,10 +54,14 @@ import { useSavingsGoals } from '@/lib/hooks/use-savings'
 import { useInvestments } from '@/lib/hooks/use-investments'
 import { useCurrency } from '@/lib/hooks/use-currency'
 import { useRecurringAutoGenerate } from '@/lib/hooks/use-recurring-auto'
+import { useRecurringRules } from '@/lib/hooks/use-recurring'
 import { formatCurrency, formatCompact } from '@/lib/utils/currency'
 import { formatDate, formatMonthYear, getCurrentMonthRange } from '@/lib/utils/date'
+import { computeBudgetAlertRows } from '@/lib/utils/budget-health'
+import { shouldShowFinanceWelcomeHero } from '@/lib/utils/dashboard-onboarding'
+import { filterUpcomingRecurringRules } from '@/lib/utils/recurring-upcoming'
 import { cn } from '@/lib/utils'
-import type { Account, Transaction, Budget, SavingsGoal, Investment } from '@/types/database'
+import type { Account, Transaction, Budget, SavingsGoal, Investment, RecurringRule } from '@/types/database'
 
 const CHART_COLORS = [
   'var(--chart-1)',
@@ -191,10 +199,21 @@ function panelTxsForCategory(monthTxs: Transaction[], categoryId: string): numbe
 
 export default function DashboardPage() {
   const currency = useCurrency()
+  const { enabled: privacyOn } = usePrivacyMode()
   useRecurringAutoGenerate()
   const [dateRange, setDateRange] = useState<DateRangeOption>('this-month')
   const now = new Date()
   const rangeBoundaryKey = `${dateRange}-${format(now, 'yyyy-MM-dd')}`
+
+  const calendarMonthStart = useMemo(() => startOfMonth(new Date()), [])
+  const calendarMonthFilters = useMemo(
+    () => ({
+      startDate: format(calendarMonthStart, 'yyyy-MM-dd'),
+      endDate: format(endOfMonth(calendarMonthStart), 'yyyy-MM-dd'),
+      type: 'expense' as const,
+    }),
+    [calendarMonthStart]
+  )
 
   const currentMonthFilters = useMemo(() => {
     const { start, end } = getPeriodBounds(dateRange, now)
@@ -212,8 +231,25 @@ export default function DashboardPage() {
   const { data: savingsGoals, isLoading: savingsLoading } = useSavingsGoals()
   const { data: monthTxs = [], isLoading: monthTxsLoading } = useTransactions(currentMonthFilters)
   const { data: recentTxs = [], isLoading: recentLoading } = useTransactions({ limit: 8 })
+  const { data: budgetNudgeTxs = [], isLoading: budgetNudgeTxLoading } = useTransactions(calendarMonthFilters)
+  const { data: anyTxProbe = [], isLoading: anyTxProbeLoading } = useTransactions({ limit: 1 })
+  const { data: recurringRules = [], isLoading: recurringLoading } = useRecurringRules()
 
-  const isNewUser = !accountsLoading && (!accounts || accounts.length === 0)
+  const upcomingRecurring = useMemo(() => {
+    return filterUpcomingRecurringRules(recurringRules as RecurringRule[], new Date(), 7, 8)
+  }, [recurringRules])
+
+  const budgetAlerts = useMemo(() => {
+    if (!budgets?.length) return []
+    return computeBudgetAlertRows(budgets, budgetNudgeTxs, calendarMonthStart)
+  }, [budgets, budgetNudgeTxs, calendarMonthStart])
+
+  const showWelcomeExtended = shouldShowFinanceWelcomeHero({
+    accountsLoaded: !accountsLoading,
+    accountCount: accounts?.length ?? 0,
+    transactionsProbeLoaded: !anyTxProbeLoading,
+    anyTransactionExists: anyTxProbe.length > 0,
+  })
 
   const netWorth = useMemo(() => {
     if (!accounts || !investments) return null
@@ -262,10 +298,14 @@ export default function DashboardPage() {
   }, [monthTxs])
 
   const statsLoading = accountsLoading || investmentsLoading
-  const chartTooltipFmt = (value: unknown) => {
-    const n = typeof value === 'number' ? value : Number(value)
-    return formatCurrency(Number.isFinite(n) ? n : 0, currency)
-  }
+  const chartTooltipFmt = useCallback(
+    (value: unknown) => {
+      const n = typeof value === 'number' ? value : Number(value)
+      const s = formatCurrency(Number.isFinite(n) ? n : 0, currency)
+      return privacyOn ? '••••' : s
+    },
+    [currency, privacyOn]
+  )
 
   const rangeSummary = chartSubtitleForRange(dateRange)
 
@@ -276,7 +316,87 @@ export default function DashboardPage() {
         description={`Overview of your finances — ${rangeSummary.toLowerCase()}`}
       />
 
-      {isNewUser && <WelcomeHero />}
+      {showWelcomeExtended && <WelcomeHero />}
+
+      {!budgetNudgeTxLoading && budgetAlerts.length > 0 && (
+        <Card
+          className={cn(
+            budgetAlerts.some((a) => a.level === 'over')
+              ? 'border-destructive/40 bg-destructive/5'
+              : 'border-amber-500/40 bg-amber-500/5'
+          )}
+        >
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2 tracking-tight">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              Budget heads-up · this month
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            {budgetAlerts.map((a) => (
+              <p
+                key={a.id}
+                className={cn(
+                  a.level === 'over'
+                    ? 'text-destructive'
+                    : 'text-amber-800 dark:text-amber-400'
+                )}
+              >
+                <strong>{a.name}</strong>:{' '}
+                <PrivateMoney>{formatCurrency(a.spent, currency)}</PrivateMoney>
+                {' / '}
+                <PrivateMoney>{formatCurrency(a.cap, currency)}</PrivateMoney>
+                {a.level === 'over' ? ' — over budget' : ' — nearing limit (80%+)'}
+              </p>
+            ))}
+            <Link
+              href="/budgets"
+              className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'mt-2 inline-flex')}
+            >
+              View budgets
+            </Link>
+          </CardContent>
+        </Card>
+      )}
+
+      {!recurringLoading && upcomingRecurring.length > 0 && (
+        <Card>
+          <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 pb-2">
+            <CardTitle className="text-base flex items-center gap-2 tracking-tight">
+              <CalendarClock className="h-4 w-4 shrink-0" />
+              Up next · 7 days
+            </CardTitle>
+            <Link
+              href="/planning"
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Manage in Planning
+            </Link>
+          </CardHeader>
+          <CardContent>
+            <ul className="divide-y divide-border text-sm">
+              {upcomingRecurring.map((r) => (
+                <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5 first:pt-0">
+                  <span className="min-w-0 flex-1 truncate font-medium">{r.description}</span>
+                  <span className="text-muted-foreground whitespace-nowrap">
+                    {formatDate(r.next_occurrence)}
+                  </span>
+                  <PrivateMoney>
+                    <span
+                      className={cn(
+                        'font-semibold font-amount whitespace-nowrap',
+                        r.type === 'expense' ? 'text-expense' : 'text-income'
+                      )}
+                    >
+                      {formatCurrency(r.amount, currency)}
+                    </span>
+                  </PrivateMoney>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
 
       <Tabs
         value={dateRange}
@@ -314,7 +434,13 @@ export default function DashboardPage() {
                 </div>
               </CardHeader>
               <CardContent>
-                <p className="text-2xl font-bold font-amount">{netWorth != null ? formatCurrency(netWorth, currency) : '—'}</p>
+                <p className="text-2xl font-bold font-amount">
+                  {netWorth != null ? (
+                    <PrivateMoney>{formatCurrency(netWorth, currency)}</PrivateMoney>
+                  ) : (
+                    '—'
+                  )}
+                </p>
                 <p className="text-xs text-muted-foreground mt-1">Accounts + investments</p>
               </CardContent>
             </Card>
@@ -326,7 +452,9 @@ export default function DashboardPage() {
                 </div>
               </CardHeader>
               <CardContent>
-                <p className="text-2xl font-bold font-amount text-income">{formatCurrency(monthlyIncome, currency)}</p>
+                <p className="text-2xl font-bold font-amount text-income">
+                  <PrivateMoney>{formatCurrency(monthlyIncome, currency)}</PrivateMoney>
+                </p>
                 <p className="text-xs text-muted-foreground mt-1">{incomeExpensePeriodCaption(dateRange, now)}</p>
               </CardContent>
             </Card>
@@ -338,7 +466,9 @@ export default function DashboardPage() {
                 </div>
               </CardHeader>
               <CardContent>
-                <p className="text-2xl font-bold font-amount text-expense">{formatCurrency(monthlyExpenses, currency)}</p>
+                <p className="text-2xl font-bold font-amount text-expense">
+                  <PrivateMoney>{formatCurrency(monthlyExpenses, currency)}</PrivateMoney>
+                </p>
                 <p className="text-xs text-muted-foreground mt-1">{incomeExpensePeriodCaption(dateRange, now)}</p>
               </CardContent>
             </Card>
@@ -351,7 +481,7 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent>
                 <p className={`text-2xl font-bold font-amount ${netThisMonth >= 0 ? 'text-income' : 'text-expense'}`}>
-                  {formatCurrency(netThisMonth, currency)}
+                  <PrivateMoney>{formatCurrency(netThisMonth, currency)}</PrivateMoney>
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">{rangeSummary}</p>
               </CardContent>
@@ -481,11 +611,18 @@ export default function DashboardPage() {
                     <div className="flex items-center justify-between gap-2 text-sm">
                       <span className="font-medium truncate">{b.category?.name ?? 'Category'}</span>
                       <span className="text-muted-foreground font-amount shrink-0">
-                        {formatCurrency(spent, currency)} / {formatCurrency(b.amount, currency)}
+                        <PrivateMoney>{formatCurrency(spent, currency)}</PrivateMoney>
+                        {' / '}
+                        <PrivateMoney>{formatCurrency(b.amount, currency)}</PrivateMoney>
                       </span>
                     </div>
                     <Progress value={pct} className="w-full" />
-                    {over && <p className="text-xs text-destructive">Over budget by {formatCurrency(spent - b.amount, currency)}</p>}
+                    {over && (
+                      <p className="text-xs text-destructive">
+                        Over budget by{' '}
+                        <PrivateMoney>{formatCurrency(spent - b.amount, currency)}</PrivateMoney>
+                      </p>
+                    )}
                   </div>
                 )
               })
@@ -530,7 +667,9 @@ export default function DashboardPage() {
                       <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: g.color || CHART_COLORS_RAW[0] }} />
                     </div>
                     <p className="text-xs text-muted-foreground font-amount">
-                      {formatCurrency(g.current_amount, currency)} → {formatCurrency(g.target_amount, currency)}
+                      <PrivateMoney>{formatCurrency(g.current_amount, currency)}</PrivateMoney>
+                      {' → '}
+                      <PrivateMoney>{formatCurrency(g.target_amount, currency)}</PrivateMoney>
                     </p>
                   </div>
                 )
@@ -580,9 +719,15 @@ export default function DashboardPage() {
                         {t.category.name}
                       </Badge>
                     )}
-                    <span className={`font-semibold font-amount ${t.type === 'income' ? 'text-income' : t.type === 'expense' ? 'text-expense' : 'text-muted-foreground'}`}>
-                      {t.type === 'expense' ? '−' : t.type === 'income' ? '+' : ''}
-                      {formatCurrency(t.amount, currency)}
+                    <span
+                      className={`font-semibold font-amount ${t.type === 'income' ? 'text-income' : t.type === 'expense' ? 'text-expense' : 'text-muted-foreground'}`}
+                    >
+                      <PrivateMoney>
+                        <span>
+                          {t.type === 'expense' ? '−' : t.type === 'income' ? '+' : ''}
+                          {formatCurrency(t.amount, currency)}
+                        </span>
+                      </PrivateMoney>
                     </span>
                   </div>
                 </li>

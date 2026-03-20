@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useMemo, useState } from 'react'
-import { format, isBefore, parseISO } from 'date-fns'
+import { format } from 'date-fns'
 import {
   Plus,
   PiggyBank,
@@ -53,29 +53,14 @@ import {
   endOfMonth,
 } from '@/lib/utils/date'
 import { cn } from '@/lib/utils'
+import {
+  sumSpentByCategory,
+  effectiveMonthlyBudgetAmount,
+  isBudgetActiveInSelectedMonth,
+} from '@/lib/utils/budget-health'
 import type { Budget, BudgetPeriod, Category } from '@/types/database'
 
 const NONE = '__none__'
-
-function effectiveMonthlyAmount(budget: Budget): number {
-  return budget.period === 'monthly' ? budget.amount : budget.amount / 12
-}
-
-function isBudgetActiveInSelectedMonth(budget: Budget, monthStart: Date): boolean {
-  const budgetStart = startOfMonth(parseISO(budget.start_date))
-  return !isBefore(monthStart, budgetStart)
-}
-
-function sumSpentByCategory(
-  transactions: { type: string; category_id: string | null; amount: number }[]
-): Map<string, number> {
-  const map = new Map<string, number>()
-  for (const t of transactions) {
-    if (t.type !== 'expense' || t.category_id == null) continue
-    map.set(t.category_id, (map.get(t.category_id) ?? 0) + t.amount)
-  }
-  return map
-}
 
 function progressBarClass(ratioPercent: number): string {
   if (ratioPercent > 100) {
@@ -140,7 +125,7 @@ export default function BudgetsPage() {
 
   const rows = useMemo(() => {
     return activeBudgets.map((b) => {
-      const cap = effectiveMonthlyAmount(b)
+      const cap = effectiveMonthlyBudgetAmount(b)
       const spent = spentByCategory.get(b.category_id) ?? 0
       const remaining = cap - spent
       const ratio = cap > 0 ? (spent / cap) * 100 : 0

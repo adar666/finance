@@ -4,6 +4,9 @@ import {
   endOfMonth,
   subMonths,
   addMonths,
+  addDays,
+  startOfDay,
+  endOfDay,
   isWithinInterval,
   parseISO,
   differenceInMonths,
@@ -41,4 +44,23 @@ export function isInDateRange(date: string, start: Date, end: Date): boolean {
   return isWithinInterval(parseISO(date), { start, end })
 }
 
-export { addMonths, subMonths, differenceInMonths, differenceInDays, parseISO, startOfMonth, endOfMonth }
+/** Inclusive: from start of `now` through end of `now + days` (calendar days). */
+export function isDateStringWithinNextDays(dateStr: string, days: number, now: Date = new Date()): boolean {
+  const d = parseISO(dateStr)
+  const start = startOfDay(now)
+  const end = endOfDay(addDays(start, days))
+  return isWithinInterval(d, { start, end })
+}
+
+export {
+  addMonths,
+  addDays,
+  subMonths,
+  differenceInMonths,
+  differenceInDays,
+  parseISO,
+  startOfMonth,
+  endOfMonth,
+  startOfDay,
+  endOfDay,
+}
