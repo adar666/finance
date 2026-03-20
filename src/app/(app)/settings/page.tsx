@@ -17,6 +17,7 @@ import {
   ImageIcon,
   Loader2,
   Zap,
+  Lightbulb,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -310,14 +311,19 @@ export default function SettingsPage() {
   const restoreInputRef = useRef<HTMLInputElement>(null)
 
   const { data: catRules = [], isLoading: rulesLoading } = useCategorizationRules()
-  const createRule = useCreateCategorizationRule()
-  const updateRule = useUpdateCategorizationRule()
-  const deleteRule = useDeleteCategorizationRule()
+  const createRule = useCreateCategorizationRule(t('settings.ruleCreated'))
+  const updateRule = useUpdateCategorizationRule(t('settings.ruleUpdated'))
+  const deleteRule = useDeleteCategorizationRule(t('settings.ruleDeleted'))
 
   const [rulePattern, setRulePattern] = useState('')
   const [ruleMatchType, setRuleMatchType] = useState<RuleMatchType>('contains')
   const [ruleCategoryId, setRuleCategoryId] = useState('')
   const [rulePriority, setRulePriority] = useState(0)
+  const [suggestOpen, setSuggestOpen] = useState(false)
+  const [suggestLoading, setSuggestLoading] = useState(false)
+  const [suggestions, setSuggestions] = useState<
+    { pattern: string; category_id: string; categoryName: string; count: number }[]
+  >([])
 
   const [dangerOpen, setDangerOpen] = useState(false)
   const [dangerConfirm, setDangerConfirm] = useState('')
@@ -484,6 +490,61 @@ export default function SettingsPage() {
       setDeletingAll(false)
     }
   }, [dangerConfirm, router, t])
+
+  const handleSuggestRules = useCallback(async () => {
+    setSuggestLoading(true)
+    try {
+      const supabase = createClient()
+      const threeMonthsAgo = new Date()
+      threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3)
+      const { data, error } = await supabase
+        .from('transactions')
+        .select('description, category_id, category:categories(name, name_he)')
+        .gte('date', format(threeMonthsAgo, 'yyyy-MM-dd'))
+        .not('category_id', 'is', null)
+        .not('description', 'is', null)
+      if (error) throw error
+
+      const grouped = new Map<string, { category_id: string; categoryName: string; count: number }>()
+      for (const row of data ?? []) {
+        const desc = (row.description as string)?.trim()
+        if (!desc) continue
+        const key = desc.toLowerCase()
+        const existing = grouped.get(key)
+        if (existing) {
+          existing.count++
+        } else {
+          const catArr = row.category as { name: string; name_he?: string }[] | null
+          const cat = catArr?.[0] ?? null
+          grouped.set(key, {
+            category_id: row.category_id as string,
+            categoryName: cat ? (locale === 'he' && cat.name_he ? cat.name_he : cat.name) : '',
+            count: 1,
+          })
+        }
+      }
+
+      const existingPatterns = new Set(catRules.map((r) => r.pattern.toLowerCase()))
+      const results = Array.from(grouped.entries())
+        .filter(([, v]) => v.count >= 3)
+        .filter(([key]) => !existingPatterns.has(key))
+        .sort((a, b) => b[1].count - a[1].count)
+        .slice(0, 20)
+        .map(([key, v]) => ({
+          pattern: key,
+          category_id: v.category_id,
+          categoryName: v.categoryName,
+          count: v.count,
+        }))
+
+      setSuggestions(results)
+      setSuggestOpen(true)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to analyze transactions')
+    } finally {
+      setSuggestLoading(false)
+    }
+  }, [catRules, locale])
 
   const loading = profileLoading || categoriesLoading
 
@@ -723,6 +784,16 @@ export default function SettingsPage() {
                 </SelectContent>
               </Select>
             </div>
+            <div className="grid gap-1.5 w-full sm:w-20">
+              <Label>{t('settings.rulePriority')}</Label>
+              <Input
+                type="number"
+                min="0"
+                value={rulePriority}
+                onChange={(e) => setRulePriority(parseInt(e.target.value) || 0)}
+                className="text-center"
+              />
+            </div>
             <Button
               size="sm"
               className="gap-1.5 shrink-0"
@@ -752,6 +823,20 @@ export default function SettingsPage() {
               )}
               {t('settings.addRule')}
             </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1.5 shrink-0"
+              disabled={suggestLoading}
+              onClick={handleSuggestRules}
+            >
+              {suggestLoading ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Lightbulb className="size-4" />
+              )}
+              {t('settings.suggestRules')}
+            </Button>
           </div>
 
           {rulesLoading ? (
@@ -771,6 +856,7 @@ export default function SettingsPage() {
                     <TableHead>{t('settings.rulePattern')}</TableHead>
                     <TableHead>{t('settings.ruleMatchType')}</TableHead>
                     <TableHead>{t('settings.ruleCategory')}</TableHead>
+                    <TableHead className="text-center">{t('settings.rulePriority')}</TableHead>
                     <TableHead className="text-center">{t('common.active')}</TableHead>
                     <TableHead className="w-10" />
                   </TableRow>
@@ -792,6 +878,9 @@ export default function SettingsPage() {
                         {rule.category
                           ? getCategoryDisplayName(rule.category, locale)
                           : rule.category_id}
+                      </TableCell>
+                      <TableCell className="text-center tabular-nums text-sm">
+                        {rule.priority}
                       </TableCell>
                       <TableCell className="text-center">
                         <Switch
@@ -917,6 +1006,62 @@ export default function SettingsPage() {
               }
             >
               {t('common.save')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={suggestOpen} onOpenChange={setSuggestOpen}>
+        <DialogContent className="sm:max-w-md max-h-[min(90vh,600px)] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{t('settings.suggestRules')}</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">{t('settings.suggestRulesDescription')}</p>
+          {suggestions.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-4 text-center">{t('settings.noSuggestions')}</p>
+          ) : (
+            <div className="space-y-2">
+              {suggestions.map((s) => (
+                <div
+                  key={s.pattern}
+                  className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="font-mono text-sm truncate">{s.pattern}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {s.categoryName} · {s.count}x
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="shrink-0"
+                    onClick={() => {
+                      createRule.mutate(
+                        {
+                          pattern: s.pattern,
+                          match_type: 'contains' as RuleMatchType,
+                          category_id: s.category_id,
+                          priority: 0,
+                        },
+                        {
+                          onSuccess: () => {
+                            setSuggestions((prev) => prev.filter((x) => x.pattern !== s.pattern))
+                          },
+                        }
+                      )
+                    }}
+                    disabled={createRule.isPending}
+                  >
+                    {t('settings.addSuggestion')}
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSuggestOpen(false)}>
+              {t('common.close')}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -57,7 +57,7 @@ export function calculateSafeToSpend(
     }, 0)
 
   const spentSoFar = transactions
-    .filter((t) => t.type === 'expense')
+    .filter((t) => t.type === 'expense' && !t.recurring_rule_id)
     .reduce((sum, t) => sum + t.amount, 0)
 
   const total = monthlyIncome - recurringExpenses - savingsContributions

@@ -1,6 +1,7 @@
 {
   "common": {
     "cancel": "ביטול",
+    "close": "סגור",
     "save": "שמירה",
     "delete": "מחיקה",
     "back": "חזרה",
@@ -192,7 +193,10 @@
     "addOrImport": "הוסף תנועה או ייבא CSV כדי להתחיל.",
     "deleteConfirm": "למחוק את התנועה? לא ניתן לבטל.",
     "deleteAriaLabel": "מחק תנועה",
-    "failedToLoad": "טעינת תנועות נכשלה"
+    "failedToLoad": "טעינת תנועות נכשלה",
+    "transactionAdded": "תנועה נוספה",
+    "transactionDeleted": "תנועה נמחקה",
+    "duplicateSuspect": "ייתכן כפילות"
   },
   "analytics": {
     "title": "ניתוח",
@@ -265,6 +269,14 @@
     "ruleCategory": "קטגוריה",
     "selectCategory": "בחר קטגוריה",
     "addRule": "הוסף כלל",
+    "rulePriority": "עדיפות",
+    "ruleCreated": "כלל נוצר",
+    "ruleUpdated": "כלל עודכן",
+    "ruleDeleted": "כלל נמחק",
+    "suggestRules": "הצע כללים",
+    "suggestRulesDescription": "בהתבסס על 3 החודשים האחרונים של תנועות מקוטגרות, הנה דפוסים שמופיעים לעיתים קרובות.",
+    "noSuggestions": "לא נמצאו הצעות. קטגר עוד תנועות קודם.",
+    "addSuggestion": "הוסף",
     "noRulesYet": "אין עדיין כללי קטגוריזציה. הוסף אחד למעלה כדי לקטגר תנועות מיובאות אוטומטית.",
     "dangerZone": "אזור סכנה",
     "dangerDescription": "מחיקה לצמיתות של כל הנתונים הפיננסיים של חשבונך. לא ניתן לבטל.",

@@ -192,6 +192,17 @@ describe('calculateSafeToSpend', () => {
     expect(result.level).toBe('green')
   })
 
+  it('excludes recurring-generated expenses from spentSoFar', () => {
+    const txs = [
+      makeTx({ id: 't1', type: 'income', amount: 10000 }),
+      makeTx({ id: 't2', type: 'expense', amount: 2000, recurring_rule_id: 'rule-1' }),
+      makeTx({ id: 't3', type: 'expense', amount: 500 }),
+    ]
+    const result = calculateSafeToSpend(txs, [], [])
+    expect(result.spentSoFar).toBe(500)
+    expect(result.monthlyIncome).toBe(10000)
+  })
+
   it('combines recurring, savings, and spending correctly', () => {
     const txs = [
       makeTx({ type: 'income', amount: 10000 }),

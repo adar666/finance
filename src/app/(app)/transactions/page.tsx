@@ -173,8 +173,8 @@ export default function TransactionsPage() {
   } = useTransactions({ ...filters, limit: fetchLimit })
   const { data: accounts = [], isLoading: accountsLoading } = useAccounts()
   const { data: categories = [], isLoading: categoriesLoading } = useCategories()
-  const createTx = useCreateTransaction()
-  const deleteTx = useDeleteTransaction()
+  const createTx = useCreateTransaction(t('transactions.transactionAdded'))
+  const deleteTx = useDeleteTransaction(t('transactions.transactionDeleted'))
   const bulkCreate = useBulkCreateTransactions()
   const { data: catRules = [] } = useCategorizationRules()
 
@@ -270,11 +270,15 @@ export default function TransactionsPage() {
       )
       return
     }
+    let resolvedCategoryId = formCategoryId || null
+    if (!resolvedCategoryId && formDescription.trim()) {
+      resolvedCategoryId = applyCategoryRules(formDescription.trim(), catRules) || null
+    }
     createTx.mutate(
       {
         account_id: formAccountId,
         transfer_to_account_id: null,
-        category_id: formCategoryId || null,
+        category_id: resolvedCategoryId,
         amount,
         type: formType,
         description: formDescription.trim() || (formType === 'income' ? 'Income' : 'Expense'),
@@ -362,10 +366,35 @@ export default function TransactionsPage() {
       try {
         const result = await parseBankPDF(file)
         setPdfBank(result.bank)
-        setPdfTransactions(result.transactions)
+
+        const dates = result.transactions.map((tx) => tx.date).filter(Boolean)
+        let existingTxs: Transaction[] = []
+        if (dates.length > 0) {
+          const minDate = dates.reduce((a, b) => (a < b ? a : b))
+          const maxDate = dates.reduce((a, b) => (a > b ? a : b))
+          const supabase = (await import('@/lib/supabase/client')).createClient()
+          const { data } = await supabase
+            .from('transactions')
+            .select('date, amount')
+            .gte('date', minDate)
+            .lte('date', maxDate)
+          existingTxs = (data ?? []) as Transaction[]
+        }
+
+        const flagged = result.transactions.map((tx) => {
+          const isDup = existingTxs.some(
+            (e) => e.date === tx.date && Math.abs(e.amount - tx.amount) < 0.01
+          )
+          if (isDup && !tx.flags?.includes('duplicate_suspect')) {
+            return { ...tx, flags: [...(tx.flags ?? []), 'duplicate_suspect' as const] }
+          }
+          return tx
+        })
+
+        setPdfTransactions(flagged)
         setPdfErrors(result.errors)
         const selected = new Set<number>()
-        result.transactions.forEach((tx, i) => {
+        flagged.forEach((tx, i) => {
           if (!tx.flags?.includes('credit_card_aggregate')) {
             selected.add(i)
           }
@@ -847,8 +876,9 @@ export default function TransactionsPage() {
                           ) : (
                             pdfTransactions.map((tx, i) => {
                               const isCcAgg = tx.flags?.includes('credit_card_aggregate')
+                              const isDupSuspect = tx.flags?.includes('duplicate_suspect')
                               return (
-                                <TableRow key={i} className={isCcAgg ? 'opacity-60' : ''}>
+                                <TableRow key={i} className={cn(isCcAgg && 'opacity-60', isDupSuspect && 'bg-orange-500/5')}>
                                   <TableCell>
                                     <Checkbox
                                       checked={pdfSelected.has(i)}
@@ -857,11 +887,16 @@ export default function TransactionsPage() {
                                   </TableCell>
                                   <TableCell className="whitespace-nowrap">{tx.date}</TableCell>
                                   <TableCell>
-                                    <div className="flex items-center gap-1">
+                                    <div className="flex items-center gap-1 flex-wrap">
                                       <Badge variant="secondary" className="capitalize">{tx.type}</Badge>
                                       {isCcAgg && (
                                         <Badge variant="outline" className="border-yellow-500 text-yellow-600 dark:text-yellow-400 text-[10px]">
                                           {t('transactions.ccAggregate')}
+                                        </Badge>
+                                      )}
+                                      {isDupSuspect && (
+                                        <Badge variant="outline" className="border-orange-500 text-orange-600 dark:text-orange-400 text-[10px]">
+                                          {t('transactions.duplicateSuspect')}
                                         </Badge>
                                       )}
                                     </div>

@@ -40,6 +40,20 @@ On pushes to the **default branch** only, **Deploy (after tests)** runs after te
 
 Postgres behavior (RLS, triggers in `supabase/migrations/`) is best validated with **Supabase CLI** (`supabase db test`) and **pgTAP** SQL under something like `supabase/tests/`, using `supabase start` or a CI service container. That is separate from Vitest.
 
+## Database Migrations
+
+Supabase migrations live in `supabase/migrations/` and must be applied in order to both **production** and **staging** instances via the Supabase dashboard SQL editor or `supabase db push`.
+
+| # | File | Purpose |
+|---|------|---------|
+| 1 | `001_initial_schema.sql` | Core tables: profiles, accounts, categories, transactions, budgets, savings_goals, investments |
+| 2 | `002_rls_policies.sql` | Row-level security policies for all tables |
+| 3 | `003_seed_categories.sql` | Default income/expense categories |
+| 4 | `004_balance_rpc.sql` | RPC function for balance calculations |
+| 5 | `005_staging_seed_me_urieladar.sql` | Staging-only dummy data (skip in production) |
+| 6 | `006_categorization_rules.sql` | Auto-categorization rules table + RLS |
+| 7 | `007_categories_name_he.sql` | Hebrew name column on categories |
+
 ## Getting Started
 
 First, run the development server:

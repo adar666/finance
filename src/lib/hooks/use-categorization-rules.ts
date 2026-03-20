@@ -23,7 +23,7 @@ export function useCategorizationRules() {
   })
 }
 
-export function useCreateCategorizationRule() {
+export function useCreateCategorizationRule(successMessage?: string) {
   const supabase = createClient()
   const qc = useQueryClient()
 
@@ -43,13 +43,13 @@ export function useCreateCategorizationRule() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: KEY })
-      toast.success('Rule created')
+      if (successMessage) toast.success(successMessage)
     },
     onError: (err: Error) => toast.error(err.message),
   })
 }
 
-export function useUpdateCategorizationRule() {
+export function useUpdateCategorizationRule(successMessage?: string) {
   const supabase = createClient()
   const qc = useQueryClient()
 
@@ -69,13 +69,13 @@ export function useUpdateCategorizationRule() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: KEY })
-      toast.success('Rule updated')
+      if (successMessage) toast.success(successMessage)
     },
     onError: (err: Error) => toast.error(err.message),
   })
 }
 
-export function useDeleteCategorizationRule() {
+export function useDeleteCategorizationRule(successMessage?: string) {
   const supabase = createClient()
   const qc = useQueryClient()
 
@@ -89,7 +89,7 @@ export function useDeleteCategorizationRule() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: KEY })
-      toast.success('Rule deleted')
+      if (successMessage) toast.success(successMessage)
     },
     onError: (err: Error) => toast.error(err.message),
   })

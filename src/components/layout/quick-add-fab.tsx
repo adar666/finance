@@ -7,6 +7,8 @@ import { format } from 'date-fns'
 import { useCreateTransaction } from '@/lib/hooks/use-transactions'
 import { useAccounts } from '@/lib/hooks/use-accounts'
 import { useCategories } from '@/lib/hooks/use-categories'
+import { useCategorizationRules } from '@/lib/hooks/use-categorization-rules'
+import { applyCategoryRules } from '@/lib/utils/auto-categorize'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -40,7 +42,8 @@ export function QuickAddFAB() {
 
   const { data: accounts = [] } = useAccounts()
   const { data: categories = [] } = useCategories()
-  const createTx = useCreateTransaction()
+  const { data: catRules = [] } = useCategorizationRules()
+  const createTx = useCreateTransaction(t('transactions.transactionAdded'))
 
   const filteredCategories = categories.filter((c) => c.type === type)
 
@@ -63,10 +66,14 @@ export function QuickAddFAB() {
     const account = accounts[0]
     if (!account) return
 
+    let resolvedCategoryId = categoryId || null
+    if (!resolvedCategoryId && description.trim()) {
+      resolvedCategoryId = applyCategoryRules(description.trim(), catRules) || null
+    }
     createTx.mutate(
       {
         account_id: account.id,
-        category_id: categoryId || null,
+        category_id: resolvedCategoryId,
         amount: num,
         type,
         description: description.trim() || t('quickAdd.quickExpense'),

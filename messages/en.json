@@ -1,6 +1,7 @@
 {
   "common": {
     "cancel": "Cancel",
+    "close": "Close",
     "save": "Save",
     "delete": "Delete",
     "back": "Back",
@@ -192,7 +193,10 @@
     "addOrImport": "Add a transaction or import a CSV to get started.",
     "deleteConfirm": "Delete this transaction? This cannot be undone.",
     "deleteAriaLabel": "Delete transaction",
-    "failedToLoad": "Failed to load transactions"
+    "failedToLoad": "Failed to load transactions",
+    "transactionAdded": "Transaction added",
+    "transactionDeleted": "Transaction deleted",
+    "duplicateSuspect": "Possible duplicate"
   },
   "analytics": {
     "title": "Analytics",
@@ -265,6 +269,14 @@
     "ruleCategory": "Category",
     "selectCategory": "Select category",
     "addRule": "Add rule",
+    "rulePriority": "Priority",
+    "ruleCreated": "Rule created",
+    "ruleUpdated": "Rule updated",
+    "ruleDeleted": "Rule deleted",
+    "suggestRules": "Suggest rules",
+    "suggestRulesDescription": "Based on your last 3 months of categorized transactions, here are patterns that appear frequently.",
+    "noSuggestions": "No suggestions found. Categorize more transactions first.",
+    "addSuggestion": "Add",
     "noRulesYet": "No categorization rules yet. Add one above to auto-categorize imported transactions.",
     "dangerZone": "Danger zone",
     "dangerDescription": "Permanently delete all financial data for your account. This cannot be undone.",

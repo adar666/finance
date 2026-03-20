@@ -32,6 +32,13 @@ vi.mock('@/lib/hooks/use-categories', () => ({
   }),
 }))
 
+vi.mock('@/lib/hooks/use-categorization-rules', () => ({
+  useCategorizationRules: () => ({
+    data: [],
+    isLoading: false,
+  }),
+}))
+
 import { QuickAddFAB } from './quick-add-fab'
 
 describe('QuickAddFAB', () => {
