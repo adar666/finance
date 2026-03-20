@@ -15,6 +15,8 @@ import {
   AlertTriangle,
   DatabaseBackup,
   ImageIcon,
+  Loader2,
+  Zap,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -29,7 +31,13 @@ import {
 } from '@/lib/hooks/use-categories'
 import { createClient } from '@/lib/supabase/client'
 import { TRANSACTION_LIST_SELECT } from '@/lib/supabase/transaction-query'
-import type { Category, CategoryType, Transaction } from '@/types/database'
+import type { Category, CategoryType, Transaction, RuleMatchType } from '@/types/database'
+import {
+  useCategorizationRules,
+  useCreateCategorizationRule,
+  useUpdateCategorizationRule,
+  useDeleteCategorizationRule,
+} from '@/lib/hooks/use-categorization-rules'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -56,6 +64,15 @@ import {
 } from '@/components/ui/dialog'
 import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { Switch } from '@/components/ui/switch'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import { selectItemsFromCurrencies, selectItemsFromMap } from '@/lib/utils/select-items'
@@ -291,6 +308,16 @@ export default function SettingsPage() {
   const [backupDownloading, setBackupDownloading] = useState(false)
   const [restoring, setRestoring] = useState(false)
   const restoreInputRef = useRef<HTMLInputElement>(null)
+
+  const { data: catRules = [], isLoading: rulesLoading } = useCategorizationRules()
+  const createRule = useCreateCategorizationRule()
+  const updateRule = useUpdateCategorizationRule()
+  const deleteRule = useDeleteCategorizationRule()
+
+  const [rulePattern, setRulePattern] = useState('')
+  const [ruleMatchType, setRuleMatchType] = useState<RuleMatchType>('contains')
+  const [ruleCategoryId, setRuleCategoryId] = useState('')
+  const [rulePriority, setRulePriority] = useState(0)
 
   const [dangerOpen, setDangerOpen] = useState(false)
   const [dangerConfirm, setDangerConfirm] = useState('')
@@ -632,6 +659,166 @@ export default function SettingsPage() {
             {t('settings.receiptDescription')}
           </CardDescription>
         </CardHeader>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Zap className="size-4 text-muted-foreground" />
+            <CardTitle className="text-base">{t('settings.categorizationRules')}</CardTitle>
+          </div>
+          <CardDescription>{t('settings.categorizationRulesDescription')}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+            <div className="grid gap-1.5 flex-1">
+              <Label>{t('settings.rulePattern')}</Label>
+              <Input
+                value={rulePattern}
+                onChange={(e) => setRulePattern(e.target.value)}
+                placeholder={t('settings.rulePatternPlaceholder')}
+              />
+            </div>
+            <div className="grid gap-1.5 w-full sm:w-36">
+              <Label>{t('settings.ruleMatchType')}</Label>
+              <Select
+                value={ruleMatchType}
+                onValueChange={(v) => setRuleMatchType((v ?? 'contains') as RuleMatchType)}
+                items={[
+                  { value: 'contains', label: t('settings.ruleContains') },
+                  { value: 'starts_with', label: t('settings.ruleStartsWith') },
+                  { value: 'exact', label: t('settings.ruleExact') },
+                ]}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="contains">{t('settings.ruleContains')}</SelectItem>
+                  <SelectItem value="starts_with">{t('settings.ruleStartsWith')}</SelectItem>
+                  <SelectItem value="exact">{t('settings.ruleExact')}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-1.5 w-full sm:w-44">
+              <Label>{t('settings.ruleCategory')}</Label>
+              <Select
+                value={ruleCategoryId || '__none__'}
+                onValueChange={(v) => setRuleCategoryId(v === '__none__' ? '' : (v ?? ''))}
+                items={[
+                  { value: '__none__', label: t('settings.selectCategory') },
+                  ...categories.map((c) => ({ value: c.id, label: getCategoryDisplayName(c, locale) })),
+                ]}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={t('settings.selectCategory')} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">{t('settings.selectCategory')}</SelectItem>
+                  {categories.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {getCategoryDisplayName(c, locale)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button
+              size="sm"
+              className="gap-1.5 shrink-0"
+              disabled={!rulePattern.trim() || !ruleCategoryId || createRule.isPending}
+              onClick={() => {
+                createRule.mutate(
+                  {
+                    pattern: rulePattern.trim(),
+                    match_type: ruleMatchType,
+                    category_id: ruleCategoryId,
+                    priority: rulePriority,
+                  },
+                  {
+                    onSuccess: () => {
+                      setRulePattern('')
+                      setRuleCategoryId('')
+                      setRulePriority(0)
+                    },
+                  }
+                )
+              }}
+            >
+              {createRule.isPending ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Plus className="size-4" />
+              )}
+              {t('settings.addRule')}
+            </Button>
+          </div>
+
+          {rulesLoading ? (
+            <div className="space-y-2">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+          ) : catRules.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-4 text-center">
+              {t('settings.noRulesYet')}
+            </p>
+          ) : (
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{t('settings.rulePattern')}</TableHead>
+                    <TableHead>{t('settings.ruleMatchType')}</TableHead>
+                    <TableHead>{t('settings.ruleCategory')}</TableHead>
+                    <TableHead className="text-center">{t('common.active')}</TableHead>
+                    <TableHead className="w-10" />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {catRules.map((rule) => (
+                    <TableRow key={rule.id}>
+                      <TableCell className="font-mono text-sm">{rule.pattern}</TableCell>
+                      <TableCell>
+                        <Badge variant="secondary" className="capitalize text-xs">
+                          {rule.match_type === 'contains'
+                            ? t('settings.ruleContains')
+                            : rule.match_type === 'starts_with'
+                              ? t('settings.ruleStartsWith')
+                              : t('settings.ruleExact')}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {rule.category
+                          ? getCategoryDisplayName(rule.category, locale)
+                          : rule.category_id}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Switch
+                          checked={rule.is_active}
+                          onCheckedChange={(checked) =>
+                            updateRule.mutate({ id: rule.id, is_active: checked })
+                          }
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => deleteRule.mutate(rule.id)}
+                          disabled={deleteRule.isPending}
+                        >
+                          <Trash2 className="size-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
       </Card>
 
       <Card className="border-destructive/40">
