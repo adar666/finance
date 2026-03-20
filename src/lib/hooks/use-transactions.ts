@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
+import { TRANSACTION_LIST_SELECT } from '@/lib/supabase/transaction-query'
 import type { Transaction } from '@/types/database'
 import { toast } from 'sonner'
 
@@ -26,7 +27,7 @@ export function useTransactions(filters: TransactionFilters = {}) {
     queryFn: async () => {
       let query = supabase
         .from('transactions')
-        .select('*, account:accounts(*), category:categories(*)')
+        .select(TRANSACTION_LIST_SELECT)
         .order('date', { ascending: false })
         .order('created_at', { ascending: false })
 

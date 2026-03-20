@@ -27,6 +27,7 @@ import {
   useDeleteCategory,
 } from '@/lib/hooks/use-categories'
 import { createClient } from '@/lib/supabase/client'
+import { TRANSACTION_LIST_SELECT } from '@/lib/supabase/transaction-query'
 import type { Category, CategoryType, Transaction } from '@/types/database'
 import { Button } from '@/components/ui/button'
 import {
@@ -73,7 +74,7 @@ async function fetchAllTransactions(): Promise<Transaction[]> {
   for (;;) {
     const { data, error } = await supabase
       .from('transactions')
-      .select('*, account:accounts(*), category:categories(*)')
+      .select(TRANSACTION_LIST_SELECT)
       .order('date', { ascending: false })
       .range(offset, offset + pageSize - 1)
     if (error) throw error
