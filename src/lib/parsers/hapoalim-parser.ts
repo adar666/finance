@@ -16,11 +16,8 @@ const INCOME_ACTIONS = [
   'רבית זכות',
 ]
 
-const TRANSFER_ACTIONS = [
-  'העב\' לאחר-נייד',
-  'העב\' לאחר',
-  'העברה',
-]
+/** Outgoing bank transfers to another person (e.g. העב' לאחר-נייד) are expenses here:
+ *  money left the account for budgeting. App "transfer" type is for moves between *your* accounts only. */
 
 function parseDate4(s: string): string {
   const m = s.match(DATE_4_RE)
@@ -32,7 +29,7 @@ function parseAmount(s: string): number {
   return parseFloat(s.replace(/,/g, '')) || 0
 }
 
-function classifyAction(action: string): { type: 'income' | 'expense' | 'transfer'; isCreditCardAggregate: boolean } {
+function classifyAction(action: string): { type: 'income' | 'expense'; isCreditCardAggregate: boolean } {
   const normalized = action.trim()
 
   for (const cc of CREDIT_CARD_ACTIONS) {
@@ -44,12 +41,6 @@ function classifyAction(action: string): { type: 'income' | 'expense' | 'transfe
   for (const inc of INCOME_ACTIONS) {
     if (normalized.includes(inc)) {
       return { type: 'income', isCreditCardAggregate: false }
-    }
-  }
-
-  for (const tr of TRANSFER_ACTIONS) {
-    if (normalized.includes(tr)) {
-      return { type: 'transfer', isCreditCardAggregate: false }
     }
   }
 

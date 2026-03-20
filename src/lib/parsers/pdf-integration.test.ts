@@ -172,10 +172,11 @@ describe('PDF integration: Hapoalim real PDF', () => {
     })
   })
 
-  it('includes transfers', () => {
+  it('classifies outgoing העב (e.g. mobile transfer to someone) as expense', () => {
     const txns = parseHapoalimPDF(pages)
-    const transfers = txns.filter((t) => t.type === 'transfer')
-    expect(transfers.length).toBeGreaterThan(0)
+    const outgoing = txns.filter((t) => t.description.includes('העב'))
+    expect(outgoing.length).toBeGreaterThan(0)
+    outgoing.forEach((t) => expect(t.type).toBe('expense'))
   })
 
   it('includes bank fees (ONTIME)', () => {

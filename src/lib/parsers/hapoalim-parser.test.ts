@@ -69,12 +69,12 @@ describe('parseHapoalimPDF', () => {
     expect(salary!.amount).toBe(10749.00)
   })
 
-  it('classifies העב\' לאחר-נייד as transfer', () => {
+  it('classifies העב\' לאחר-נייד as expense (outgoing payment, not in-app account transfer)', () => {
     const txns = parseHapoalimPDF([FIXTURE_TEXT])
-    const transfers = txns.filter((t) => t.type === 'transfer')
-    expect(transfers.length).toBeGreaterThan(0)
-    transfers.forEach((t) => {
-      expect(t.description).toContain('העב')
+    const outgoing = txns.filter((t) => t.description.includes('העב'))
+    expect(outgoing.length).toBeGreaterThan(0)
+    outgoing.forEach((t) => {
+      expect(t.type).toBe('expense')
       expect(t.flags).toEqual([])
     })
   })
