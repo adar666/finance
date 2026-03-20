@@ -91,14 +91,14 @@ export function AppSidebar() {
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
           <TrendingUp className="h-4 w-4" />
         </div>
-        {!collapsed && <span className="font-bold text-sm tracking-tight">Finance</span>}
+        {!collapsed && <span className="text-lg font-bold tracking-tight">Finance</span>}
       </div>
 
       <nav className="flex-1 py-3 px-2 space-y-0.5 overflow-y-auto">
         {navItems.map((item) => {
           const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href))
           const linkClass = cn(
-            'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+            'min-h-11 flex items-center gap-3 px-3 py-2.5 rounded-lg text-base font-medium transition-colors',
             isActive
               ? 'bg-primary/10 text-primary'
               : 'text-muted-foreground hover:text-foreground hover:bg-accent',
@@ -111,7 +111,7 @@ export function AppSidebar() {
                 <TooltipTrigger
                   render={(props) => (
                     <Link href={item.href} {...props} className={cn(linkClass, props.className)}>
-                      <item.icon className="h-4 w-4 shrink-0" />
+                      <item.icon className="h-5 w-5 shrink-0" />
                     </Link>
                   )}
                 />
@@ -122,7 +122,7 @@ export function AppSidebar() {
 
           return (
             <Link key={item.href} href={item.href} className={linkClass}>
-              <item.icon className="h-4 w-4 shrink-0" />
+              <item.icon className="h-5 w-5 shrink-0" />
               {item.label}
             </Link>
           )
@@ -131,7 +131,7 @@ export function AppSidebar() {
 
       {userEmail && !collapsed && (
         <div className="px-4 pb-2">
-          <p className="text-xs text-muted-foreground truncate">{userEmail}</p>
+          <p className="text-sm text-muted-foreground truncate">{userEmail}</p>
         </div>
       )}
 
@@ -146,7 +146,7 @@ export function AppSidebar() {
                     href="/settings"
                     {...props}
                     className={cn(
-                      'flex items-center justify-center px-2 py-2 rounded-lg text-sm font-medium transition-colors',
+                      'min-h-11 flex items-center justify-center px-2 py-2 rounded-lg text-base font-medium transition-colors',
                       pathname === '/settings'
                         ? 'bg-primary/10 text-primary'
                         : 'text-muted-foreground hover:text-foreground hover:bg-accent',
@@ -170,7 +170,7 @@ export function AppSidebar() {
                       cycleTheme()
                     }}
                     className={cn(
-                      'flex items-center justify-center w-full px-2 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors',
+                      'min-h-11 flex items-center justify-center w-full px-2 py-2 rounded-lg text-base text-muted-foreground hover:text-foreground hover:bg-accent transition-colors',
                       props.className
                     )}
                   >
@@ -191,7 +191,7 @@ export function AppSidebar() {
                       void handleSignOut()
                     }}
                     className={cn(
-                      'flex items-center justify-center w-full px-2 py-2 rounded-lg text-sm text-muted-foreground hover:text-destructive hover:bg-accent transition-colors',
+                      'min-h-11 flex items-center justify-center w-full px-2 py-2 rounded-lg text-base text-muted-foreground hover:text-destructive hover:bg-accent transition-colors',
                       props.className
                     )}
                   >
@@ -207,7 +207,7 @@ export function AppSidebar() {
             <Link
               href="/settings"
               className={cn(
-                'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                'min-h-11 flex items-center gap-3 px-3 py-2.5 rounded-lg text-base font-medium transition-colors',
                 pathname === '/settings'
                   ? 'bg-primary/10 text-primary'
                   : 'text-muted-foreground hover:text-foreground hover:bg-accent'
@@ -218,14 +218,14 @@ export function AppSidebar() {
             </Link>
             <button
               onClick={cycleTheme}
-              className="flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+              className="min-h-11 flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-base font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
             >
               <ThemeIcon className="h-4 w-4" />
               {themeLabel}
             </button>
             <button
               onClick={handleSignOut}
-              className="flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-destructive hover:bg-accent transition-colors"
+              className="min-h-11 flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-base font-medium text-muted-foreground hover:text-destructive hover:bg-accent transition-colors"
             >
               <LogOut className="h-4 w-4" />
               Sign out

@@ -41,14 +41,14 @@ const moreHrefs = moreSheetItems.map((item) => item.href)
 
 function navItemClassName(active: boolean) {
   return cn(
-    'flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-xs font-medium transition-colors min-w-[48px]',
+    'flex flex-col items-center gap-1 px-2 py-1.5 rounded-lg text-sm font-medium transition-colors min-w-[52px]',
     active ? 'text-primary' : 'text-muted-foreground'
   )
 }
 
 function sheetNavLinkClassName(active: boolean) {
   return cn(
-    'flex flex-col items-center justify-center gap-0.5 px-3 py-3 rounded-lg text-xs font-medium transition-colors w-full min-h-[56px]',
+    'flex flex-col items-center justify-center gap-1 px-3 py-3 rounded-lg text-sm font-medium transition-colors w-full min-h-[56px]',
     active ? 'text-primary' : 'text-muted-foreground'
   )
 }
@@ -73,7 +73,7 @@ export function MobileNav() {
               href={item.href}
               className={navItemClassName(isActive)}
             >
-              <item.icon className="h-5 w-5" />
+              <item.icon className="h-5 w-5 shrink-0" />
               <span>{item.label}</span>
             </Link>
           )
