@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { Plus_Jakarta_Sans, JetBrains_Mono } from 'next/font/google'
+import { StagingBanner } from '@/components/layout/staging-banner'
 import { Providers } from '@/components/providers'
 import './globals.css'
 
@@ -25,7 +26,7 @@ export const metadata: Metadata = {
   description: 'Track your money, investments, budgets, and savings goals in one place.',
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode
@@ -35,6 +36,7 @@ export default function RootLayout({
       <body
         className={`${sans.variable} ${mono.variable} font-sans min-h-screen antialiased`}
       >
+        <StagingBanner />
         <Providers>{children}</Providers>
       </body>
     </html>
