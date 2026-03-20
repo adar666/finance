@@ -1,7 +1,10 @@
 import type { Metadata } from 'next'
+import { headers } from 'next/headers'
 import { Plus_Jakarta_Sans, JetBrains_Mono } from 'next/font/google'
-import { StagingBanner } from '@/components/layout/staging-banner'
+import { StagingBannerBar } from '@/components/layout/staging-banner'
 import { Providers } from '@/components/providers'
+import { cn } from '@/lib/utils'
+import { isStagingFinanceHost } from '@/lib/utils/staging-host'
 import './globals.css'
 
 const sans = Plus_Jakarta_Sans({
@@ -31,12 +34,21 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode
 }) {
+  const h = await headers()
+  const host = h.get('x-forwarded-host') ?? h.get('host') ?? ''
+  const showStagingBanner = isStagingFinanceHost(host)
+
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${sans.variable} ${mono.variable} font-sans min-h-screen antialiased`}
+        className={cn(
+          sans.variable,
+          mono.variable,
+          'font-sans min-h-screen antialiased',
+          showStagingBanner && 'pt-12'
+        )}
       >
-        <StagingBanner />
+        {showStagingBanner ? <StagingBannerBar /> : null}
         <Providers>{children}</Providers>
       </body>
     </html>

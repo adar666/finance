@@ -1,22 +1,15 @@
-import { headers } from 'next/headers'
 import { AlertTriangle } from 'lucide-react'
-import { isStagingFinanceHost } from '@/lib/utils/staging-host'
 
 /**
- * Fixed banner when the app is served on the staging hostname (not production).
+ * Staging strip — use only when `isStagingFinanceHost(host)` is true (see root layout).
+ * Fixed to the top of the viewport so it stays visible on full-screen routes (e.g. /login).
  */
-export async function StagingBanner() {
-  const h = await headers()
-  const host = h.get('x-forwarded-host') ?? h.get('host') ?? ''
-  if (!isStagingFinanceHost(host)) {
-    return null
-  }
-
+export function StagingBannerBar() {
   return (
     <div
       role="status"
       aria-live="polite"
-      className="sticky top-0 z-[100] flex w-full items-center justify-center gap-2 border-b border-amber-950/20 bg-amber-500 px-4 py-2 text-center text-sm font-medium text-amber-950 shadow-sm dark:border-amber-400/30 dark:bg-amber-600 dark:text-amber-50"
+      className="fixed top-0 right-0 left-0 z-[200] flex w-full items-center justify-center gap-2 border-b border-amber-950/20 bg-amber-500 px-4 py-2 text-center text-sm font-medium text-amber-950 shadow-sm dark:border-amber-400/30 dark:bg-amber-600 dark:text-amber-50"
     >
       <AlertTriangle className="size-4 shrink-0 opacity-90" aria-hidden />
       <span>
