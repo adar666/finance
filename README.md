@@ -1,5 +1,45 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Testing
+
+### Unit and integration (Vitest)
+
+[Vitest](https://vitest.dev/) + [React Testing Library](https://testing-library.com/react) (happy-dom). Server-style tests mock Supabase — **no** real `NEXT_PUBLIC_SUPABASE_*` values are required for `npm run test`.
+
+```bash
+npm run test        # CI-style single run
+npm run test:watch  # watch mode while developing
+```
+
+Tests live under `src/**/*.test.{ts,tsx}` (utils including `recurring-dates`, `sanitizeNextPath`, `cn`, UI smoke, `useCurrency`, `auth/callback`, `updateSession`).
+
+### E2E smoke (Playwright)
+
+[Playwright](https://playwright.dev/) drives a real browser against a production build. By default the test runner starts `npm run build && npm run start` on **port 3001** so it does not collide with `next dev` on 3000.
+
+```bash
+npx playwright install chromium   # once per machine (CI installs in workflow)
+npm run test:e2e                  # build + serve + run `e2e/*.spec.ts`
+npm run test:e2e:ui               # interactive UI mode
+```
+
+Optional env:
+
+- `PLAYWRIGHT_BASE_URL` — e.g. `http://127.0.0.1:3000` to reuse an already-running dev server (skips spawning `webServer` when the URL responds).
+- `PLAYWRIGHT_PORT` — port for the spawned server (default `3001`; ignored if `PLAYWRIGHT_BASE_URL` is set).
+
+**Scope today:** unauthenticated checks only (`/login` content, `/` → `/login`). Full magic-link login, authenticated dashboards, and Supabase RLS need a test inbox, auth bypass, or separate DB tests — see below.
+
+### CI
+
+[`.github/workflows/finance-ci.yml`](.github/workflows/finance-ci.yml) runs on every push and pull request. It calls [`.github/workflows/finance-ci-reusable.yml`](.github/workflows/finance-ci-reusable.yml) to run Vitest, install Playwright Chromium, and run `npm run test:e2e`.
+
+On pushes to the **default branch** only, **Deploy (after tests)** runs after tests succeed. If tests fail, that job is skipped. Add real deploy steps there if you want Actions to publish, or use **GitHub rulesets / branch protection** and require status check **Finance CI / Unit, integration, and E2E**.
+
+### Optional: database / RLS (Supabase + pgTAP)
+
+Postgres behavior (RLS, triggers in `supabase/migrations/`) is best validated with **Supabase CLI** (`supabase db test`) and **pgTAP** SQL under something like `supabase/tests/`, using `supabase start` or a CI service container. That is separate from Vitest.
+
 ## Getting Started
 
 First, run the development server:

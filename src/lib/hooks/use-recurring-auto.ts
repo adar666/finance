@@ -4,26 +4,8 @@ import { useEffect, useRef } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
-import type { RecurringRule, RecurringFrequency } from '@/types/database'
-
-function advanceDate(dateStr: string, frequency: RecurringFrequency): string {
-  const d = new Date(dateStr)
-  switch (frequency) {
-    case 'daily':
-      d.setDate(d.getDate() + 1)
-      break
-    case 'weekly':
-      d.setDate(d.getDate() + 7)
-      break
-    case 'monthly':
-      d.setMonth(d.getMonth() + 1)
-      break
-    case 'yearly':
-      d.setFullYear(d.getFullYear() + 1)
-      break
-  }
-  return d.toISOString().slice(0, 10)
-}
+import type { RecurringRule } from '@/types/database'
+import { advanceRecurringDate } from '@/lib/utils/recurring-dates'
 
 export function useRecurringAutoGenerate() {
   const qc = useQueryClient()
@@ -83,7 +65,7 @@ export function useRecurringAutoGenerate() {
             recurring_rule_id: rule.id,
           })
 
-          nextOccurrence = advanceDate(nextOccurrence, rule.frequency)
+          nextOccurrence = advanceRecurringDate(nextOccurrence, rule.frequency)
 
           if (batch.length >= 100) break
         }
