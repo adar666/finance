@@ -49,7 +49,7 @@ export function useTransactions(filters: TransactionFilters = {}) {
   })
 }
 
-export function useCreateTransaction() {
+export function useCreateTransaction(successMessage?: string) {
   const supabase = createClient()
   const qc = useQueryClient()
 
@@ -70,13 +70,13 @@ export function useCreateTransaction() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['transactions'] })
       qc.invalidateQueries({ queryKey: ['accounts'] })
-      toast.success('Transaction added')
+      if (successMessage) toast.success(successMessage)
     },
     onError: (err: Error) => toast.error(err.message),
   })
 }
 
-export function useUpdateTransaction() {
+export function useUpdateTransaction(successMessage?: string) {
   const supabase = createClient()
   const qc = useQueryClient()
 
@@ -94,13 +94,13 @@ export function useUpdateTransaction() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['transactions'] })
       qc.invalidateQueries({ queryKey: ['accounts'] })
-      toast.success('Transaction updated')
+      if (successMessage) toast.success(successMessage)
     },
     onError: (err: Error) => toast.error(err.message),
   })
 }
 
-export function useDeleteTransaction() {
+export function useDeleteTransaction(successMessage?: string) {
   const supabase = createClient()
   const qc = useQueryClient()
 
@@ -112,13 +112,13 @@ export function useDeleteTransaction() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['transactions'] })
       qc.invalidateQueries({ queryKey: ['accounts'] })
-      toast.success('Transaction deleted')
+      if (successMessage) toast.success(successMessage)
     },
     onError: (err: Error) => toast.error(err.message),
   })
 }
 
-export function useBulkCreateTransactions() {
+export function useBulkCreateTransactions(successMessage?: string) {
   const supabase = createClient()
   const qc = useQueryClient()
 
@@ -136,7 +136,11 @@ export function useBulkCreateTransactions() {
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ['transactions'] })
       qc.invalidateQueries({ queryKey: ['accounts'] })
-      toast.success(`Imported ${data.length} transactions`)
+      if (successMessage) {
+        toast.success(successMessage)
+      } else {
+        toast.success(`Imported ${data.length} transactions`)
+      }
     },
     onError: (err: Error) => toast.error(err.message),
   })

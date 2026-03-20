@@ -37,6 +37,7 @@ import {
   ArrowRight,
   CalendarClock,
   AlertTriangle,
+  ShieldCheck,
 } from 'lucide-react'
 
 import { PageHeader } from '@/components/layout/page-header'
@@ -55,6 +56,7 @@ import { useInvestments } from '@/lib/hooks/use-investments'
 import { useCurrency } from '@/lib/hooks/use-currency'
 import { useRecurringAutoGenerate } from '@/lib/hooks/use-recurring-auto'
 import { useRecurringRules } from '@/lib/hooks/use-recurring'
+import { calculateSafeToSpend } from '@/lib/utils/safe-to-spend'
 import { formatCurrency, formatCompact } from '@/lib/utils/currency'
 import { formatDate, formatMonthYear, getCurrentMonthRange } from '@/lib/utils/date'
 import { computeBudgetAlertRows } from '@/lib/utils/budget-health'
@@ -316,6 +318,15 @@ export default function DashboardPage() {
     [currency, privacyOn]
   )
 
+  const safeToSpend = useMemo(() => {
+    if (monthTxsLoading || recurringLoading || savingsLoading) return null
+    return calculateSafeToSpend(
+      monthTxs,
+      recurringRules as RecurringRule[],
+      (savingsGoals ?? []) as import('@/types/database').SavingsGoal[]
+    )
+  }, [monthTxs, recurringRules, savingsGoals, monthTxsLoading, recurringLoading, savingsLoading])
+
   const rangeSummary = chartSubtitleForRange(dateRange, t)
 
   return (
@@ -403,6 +414,71 @@ export default function DashboardPage() {
                 </li>
               ))}
             </ul>
+          </CardContent>
+        </Card>
+      )}
+
+      {safeToSpend && safeToSpend.total > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2 tracking-tight">
+              <ShieldCheck className="h-4 w-4 shrink-0" />
+              {t('dashboard.safeToSpend')}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex items-baseline justify-between gap-2">
+              <PrivateMoney>
+                <span
+                  className={cn(
+                    'text-2xl font-bold tabular-nums',
+                    safeToSpend.level === 'green' && 'text-emerald-600 dark:text-emerald-400',
+                    safeToSpend.level === 'yellow' && 'text-amber-600 dark:text-amber-400',
+                    safeToSpend.level === 'red' && 'text-red-600 dark:text-red-400'
+                  )}
+                >
+                  {formatCurrency(safeToSpend.remaining, currency)}
+                </span>
+              </PrivateMoney>
+              <span className="text-sm text-muted-foreground">
+                {t('dashboard.remaining')}
+              </span>
+            </div>
+            <Progress
+              value={safeToSpend.percentage}
+              className={cn(
+                '[&_[data-slot=progress-track]]:h-2.5',
+                safeToSpend.level === 'green' && '[&_[data-slot=progress-indicator]]:bg-emerald-500',
+                safeToSpend.level === 'yellow' && '[&_[data-slot=progress-indicator]]:bg-amber-500',
+                safeToSpend.level === 'red' && '[&_[data-slot=progress-indicator]]:bg-red-500'
+              )}
+            />
+            <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground sm:grid-cols-4">
+              <div>
+                <p className="font-medium text-foreground">
+                  <PrivateMoney>{formatCurrency(safeToSpend.monthlyIncome, currency)}</PrivateMoney>
+                </p>
+                <p>{t('dashboard.income')}</p>
+              </div>
+              <div>
+                <p className="font-medium text-foreground">
+                  <PrivateMoney>{formatCurrency(safeToSpend.recurringExpenses, currency)}</PrivateMoney>
+                </p>
+                <p>{t('dashboard.recurringExpenses')}</p>
+              </div>
+              <div>
+                <p className="font-medium text-foreground">
+                  <PrivateMoney>{formatCurrency(safeToSpend.savingsContributions, currency)}</PrivateMoney>
+                </p>
+                <p>{t('dashboard.savingsGoals')}</p>
+              </div>
+              <div>
+                <p className="font-medium text-foreground">
+                  <PrivateMoney>{formatCurrency(safeToSpend.spentSoFar, currency)}</PrivateMoney>
+                </p>
+                <p>{t('dashboard.spentSoFar')}</p>
+              </div>
+            </div>
           </CardContent>
         </Card>
       )}

@@ -12,6 +12,7 @@ import {
   Trash2,
   ArrowUpCircle,
   ArrowDownCircle,
+  Loader2,
 } from 'lucide-react'
 import {
   AreaChart,
@@ -45,6 +46,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -219,6 +221,8 @@ export default function PlanningPage() {
   const updateRule = useUpdateRecurringRule()
 
   const [addOpen, setAddOpen] = useState(false)
+  const [ruleDeleteOpen, setRuleDeleteOpen] = useState(false)
+  const [pendingRuleDeleteId, setPendingRuleDeleteId] = useState<string | null>(null)
   const [form, setForm] = useState<RuleForm>(defaultRuleForm)
   const [extraSavings, setExtraSavings] = useState('0')
 
@@ -454,8 +458,8 @@ export default function PlanningPage() {
                                 size="icon-sm"
                                 className="text-destructive hover:text-destructive"
                                 onClick={() => {
-                                  if (!window.confirm(t('planning.deleteRuleConfirm'))) return
-                                  deleteRule.mutate(rule.id)
+                                  setPendingRuleDeleteId(rule.id)
+                                  setRuleDeleteOpen(true)
                                 }}
                                 disabled={deleteRule.isPending}
                               >
@@ -851,6 +855,54 @@ export default function PlanningPage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <Dialog
+        open={ruleDeleteOpen}
+        onOpenChange={(open) => {
+          if (!open && !deleteRule.isPending) {
+            setRuleDeleteOpen(false)
+            setPendingRuleDeleteId(null)
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md" showCloseButton={!deleteRule.isPending}>
+          <DialogHeader>
+            <DialogTitle>{t('planning.deleteRuleDialogTitle')}</DialogTitle>
+            <DialogDescription>{t('planning.deleteRuleConfirm')}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="border-0 bg-transparent p-0 sm:justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setRuleDeleteOpen(false)
+                setPendingRuleDeleteId(null)
+              }}
+              disabled={deleteRule.isPending}
+            >
+              {t('common.cancel')}
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              className="gap-1.5"
+              onClick={() => {
+                if (!pendingRuleDeleteId) return
+                deleteRule.mutate(pendingRuleDeleteId, {
+                  onSettled: () => {
+                    setRuleDeleteOpen(false)
+                    setPendingRuleDeleteId(null)
+                  },
+                })
+              }}
+              disabled={deleteRule.isPending}
+            >
+              {deleteRule.isPending && <Loader2 className="size-4 animate-spin" />}
+              {t('common.delete')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

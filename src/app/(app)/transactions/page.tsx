@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, startTransition } from 'react'
 import { format, isValid, parseISO } from 'date-fns'
 import {
   Plus,
@@ -29,12 +29,17 @@ import { useCurrency } from '@/lib/hooks/use-currency'
 import { useAccounts } from '@/lib/hooks/use-accounts'
 import { useCategories } from '@/lib/hooks/use-categories'
 import { parseCSV, mapCSVToTransactions, type ColumnMapping } from '@/lib/utils/csv-parser'
+import { parseBankPDF } from '@/lib/parsers/parse-bank-pdf'
+import type { ParsedTransaction, BankDetectionResult } from '@/lib/parsers/types'
+import { useCategorizationRules } from '@/lib/hooks/use-categorization-rules'
+import { applyCategoryRules, matchIsracardCategory } from '@/lib/utils/auto-categorize'
 import type { Transaction, TransactionType, Category } from '@/types/database'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -57,6 +62,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
@@ -168,9 +174,10 @@ export default function TransactionsPage() {
   } = useTransactions({ ...filters, limit: fetchLimit })
   const { data: accounts = [], isLoading: accountsLoading } = useAccounts()
   const { data: categories = [], isLoading: categoriesLoading } = useCategories()
-  const createTx = useCreateTransaction()
-  const deleteTx = useDeleteTransaction()
+  const createTx = useCreateTransaction(t('transactions.transactionAdded'))
+  const deleteTx = useDeleteTransaction(t('transactions.transactionDeleted'))
   const bulkCreate = useBulkCreateTransactions()
+  const { data: catRules = [] } = useCategorizationRules()
 
   const summary = useMemo(() => summaryFromTransactions(allFiltered), [allFiltered])
 
@@ -181,6 +188,8 @@ export default function TransactionsPage() {
   }, [accounts])
 
   const [addOpen, setAddOpen] = useState(false)
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
 
   useEffect(() => {
     if (consumeAddTransactionQueryParam('/transactions')) {
@@ -264,11 +273,15 @@ export default function TransactionsPage() {
       )
       return
     }
+    let resolvedCategoryId = formCategoryId || null
+    if (!resolvedCategoryId && formDescription.trim()) {
+      resolvedCategoryId = applyCategoryRules(formDescription.trim(), catRules) || null
+    }
     createTx.mutate(
       {
         account_id: formAccountId,
         transfer_to_account_id: null,
-        category_id: formCategoryId || null,
+        category_id: resolvedCategoryId,
         amount,
         type: formType,
         description: formDescription.trim() || (formType === 'income' ? 'Income' : 'Expense'),
@@ -298,6 +311,14 @@ export default function TransactionsPage() {
   const [mapNotes, setMapNotes] = useState('')
   const [importAccountId, setImportAccountId] = useState('')
 
+  const [importMode, setImportMode] = useState<'csv' | 'pdf'>('csv')
+  const [pdfParsing, setPdfParsing] = useState(false)
+  const [pdfBank, setPdfBank] = useState<BankDetectionResult | null>(null)
+  const [pdfTransactions, setPdfTransactions] = useState<ParsedTransaction[]>([])
+  const [pdfErrors, setPdfErrors] = useState<string[]>([])
+  const [pdfSelected, setPdfSelected] = useState<Set<number>>(new Set())
+  const [dragging, setDragging] = useState(false)
+
   const csvMappingItemsDashNone = useMemo(
     () => [{ value: NONE, label: '—' }, ...csvHeaders.map((h) => ({ value: h, label: h }))],
     [csvHeaders]
@@ -320,26 +341,97 @@ export default function TransactionsPage() {
     setMapCategory('')
     setMapNotes('')
     setImportAccountId('')
+    setImportMode('csv')
+    setPdfParsing(false)
+    setPdfBank(null)
+    setPdfTransactions([])
+    setPdfErrors([])
+    setPdfSelected(new Set())
+    setDragging(false)
   }, [])
 
-  async function onCsvFileChange(file: File | null) {
+  async function onImportFileChange(file: File | null) {
     setCsvFile(file)
     setCsvHeaders([])
     setCsvRows([])
     setCsvParseErrors([])
+    setPdfTransactions([])
+    setPdfErrors([])
+    setPdfBank(null)
+    setPdfSelected(new Set())
     if (!file) return
-    const result = await parseCSV(file)
-    setCsvParseErrors(result.errors)
-    setCsvHeaders(result.headers)
-    setCsvRows(result.rows)
-    const h = result.headers
-    const guess = (candidates: string[]) =>
-      h.find((x) => candidates.some((c) => x.toLowerCase().includes(c))) ?? ''
-    setMapDate(guess(['date', 'תאריך']))
-    setMapAmount(guess(['amount', 'sum', 'סכום']))
-    setMapDescription(guess(['description', 'memo', 'details', 'payee', 'תיאור']))
-    setMapCategory(guess(['category', 'קטגוריה']))
-    setMapNotes(guess(['note', 'notes', 'comment']))
+
+    const isPdf = file.name.toLowerCase().endsWith('.pdf') || file.type === 'application/pdf'
+
+    if (isPdf) {
+      setImportMode('pdf')
+      setPdfParsing(true)
+      try {
+        const result = await parseBankPDF(file)
+        setPdfBank(result.bank)
+
+        const dates = result.transactions.map((tx) => tx.date).filter(Boolean)
+        let existingTxs: Transaction[] = []
+        if (dates.length > 0) {
+          const minDate = dates.reduce((a, b) => (a < b ? a : b))
+          const maxDate = dates.reduce((a, b) => (a > b ? a : b))
+          const supabase = (await import('@/lib/supabase/client')).createClient()
+          const { data } = await supabase
+            .from('transactions')
+            .select('date, amount')
+            .gte('date', minDate)
+            .lte('date', maxDate)
+          existingTxs = (data ?? []) as Transaction[]
+        }
+
+        const flagged = result.transactions.map((tx) => {
+          const isDup = existingTxs.some(
+            (e) => e.date === tx.date && Math.abs(e.amount - tx.amount) < 0.01
+          )
+          if (isDup && !tx.flags?.includes('duplicate_suspect')) {
+            return { ...tx, flags: [...(tx.flags ?? []), 'duplicate_suspect' as const] }
+          }
+          return tx
+        })
+
+        setPdfTransactions(flagged)
+        setPdfErrors(result.errors)
+        const selected = new Set<number>()
+        flagged.forEach((tx, i) => {
+          if (!tx.flags?.includes('credit_card_aggregate')) {
+            selected.add(i)
+          }
+        })
+        setPdfSelected(selected)
+      } catch (err) {
+        setPdfErrors([err instanceof Error ? err.message : 'Failed to parse PDF'])
+      } finally {
+        setPdfParsing(false)
+      }
+    } else {
+      setImportMode('csv')
+      const result = await parseCSV(file)
+      setCsvParseErrors(result.errors)
+      setCsvHeaders(result.headers)
+      setCsvRows(result.rows)
+      const h = result.headers
+      const guess = (candidates: string[]) =>
+        h.find((x) => candidates.some((c) => x.toLowerCase().includes(c))) ?? ''
+      setMapDate(guess(['date', 'תאריך']))
+      setMapAmount(guess(['amount', 'sum', 'סכום']))
+      setMapDescription(guess(['description', 'memo', 'details', 'payee', 'תיאור']))
+      setMapCategory(guess(['category', 'קטגוריה']))
+      setMapNotes(guess(['note', 'notes', 'comment']))
+    }
+  }
+
+  function togglePdfRow(idx: number) {
+    setPdfSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(idx)) next.delete(idx)
+      else next.add(idx)
+      return next
+    })
   }
 
   const columnMapping: ColumnMapping = useMemo(
@@ -395,9 +487,39 @@ export default function TransactionsPage() {
       .filter((row) => row.amount > 0 && row.description)
   }, [mappingValid, importAccountId, csvRows, columnMapping, categories, mapCategory])
 
+  const pdfBulkPayload = useMemo(() => {
+    if (!importAccountId || pdfTransactions.length === 0) return []
+    return pdfTransactions
+      .filter((_, i) => pdfSelected.has(i))
+      .map((tx) => {
+        let category_id: string | null = null
+        const ruleMatch = applyCategoryRules(tx.description, catRules)
+        if (ruleMatch) {
+          category_id = ruleMatch
+        } else if (tx.sourceCategory) {
+          const mapped = matchIsracardCategory(tx.sourceCategory, categories)
+          if (mapped) category_id = mapped
+        }
+        return {
+          account_id: importAccountId,
+          category_id,
+          amount: tx.amount,
+          type: tx.type,
+          description: tx.description.trim() || 'Imported',
+          date: tx.date,
+          notes: tx.sourceCategory || null,
+          transfer_to_account_id: null,
+          recurring_rule_id: null,
+        }
+      })
+      .filter((row) => row.amount > 0 && row.description)
+  }, [importAccountId, pdfTransactions, pdfSelected, catRules, categories])
+
+  const activePayload = importMode === 'pdf' ? pdfBulkPayload : bulkPayload
+
   function handleBulkImport() {
-    if (bulkPayload.length === 0) return
-    bulkCreate.mutate(bulkPayload, {
+    if (activePayload.length === 0) return
+    bulkCreate.mutate(activePayload, {
       onSuccess: () => {
         setImportOpen(false)
         resetImport()
@@ -405,11 +527,29 @@ export default function TransactionsPage() {
     })
   }
 
-  const canProceedStep2 = Boolean(csvFile && csvRows.length > 0 && csvParseErrors.length === 0)
+  const canProceedStep1Csv = Boolean(csvFile && csvRows.length > 0 && csvParseErrors.length === 0)
+  const canProceedStep1Pdf = Boolean(csvFile && pdfTransactions.length > 0 && !pdfParsing)
 
-  function handleDelete(id: string) {
-    if (!window.confirm(t('transactions.deleteConfirm'))) return
-    deleteTx.mutate(id)
+  const openDeleteConfirm = useCallback((id: string) => {
+    // Defer dialog + full table re-render so the click yields quickly (better INP than sync setState).
+    startTransition(() => {
+      setPendingDeleteId(id)
+      setDeleteConfirmOpen(true)
+    })
+  }, [])
+
+  function closeDeleteConfirm() {
+    setDeleteConfirmOpen(false)
+    setPendingDeleteId(null)
+  }
+
+  function confirmDeleteTransaction() {
+    if (!pendingDeleteId) return
+    deleteTx.mutate(pendingDeleteId, {
+      onSettled: () => {
+        closeDeleteConfirm()
+      },
+    })
   }
 
   const headerSelectItem = (key: string) => (
@@ -432,7 +572,7 @@ export default function TransactionsPage() {
           onClick={() => setImportOpen(true)}
         >
           <Upload className="size-4" />
-          {t('transactions.importCsv')}
+          {t('transactions.importFile')}
         </Button>
         <Dialog
           open={importOpen}
@@ -448,27 +588,72 @@ export default function TransactionsPage() {
             <div className="flex gap-1 text-xs text-muted-foreground">
               <span className={importStep >= 1 ? 'font-medium text-foreground' : ''}>{t('transactions.stepUpload')}</span>
               <span>→</span>
-              <span className={importStep >= 2 ? 'font-medium text-foreground' : ''}>{t('transactions.stepMap')}</span>
-              <span>→</span>
+              {importMode === 'csv' && (
+                <>
+                  <span className={importStep >= 2 ? 'font-medium text-foreground' : ''}>{t('transactions.stepMap')}</span>
+                  <span>→</span>
+                </>
+              )}
               <span className={importStep >= 3 ? 'font-medium text-foreground' : ''}>{t('transactions.stepPreview')}</span>
             </div>
 
             {importStep === 1 && (
               <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="csv-file">{t('transactions.csvFile')}</Label>
-                  <Input
-                    id="csv-file"
-                    type="file"
-                    accept=".csv,text/csv"
-                    onChange={(e) => onCsvFileChange(e.target.files?.[0] ?? null)}
-                  />
-                  {csvFile && (
-                    <p className="text-xs text-muted-foreground">
-                      {csvFile.name} — {csvRows.length} row{csvRows.length === 1 ? '' : 's'}
-                    </p>
+                <div
+                  className={cn(
+                    'relative flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-8 transition-colors',
+                    dragging ? 'border-primary bg-primary/5' : 'border-muted-foreground/25',
+                    'cursor-pointer hover:border-primary/50'
                   )}
+                  onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
+                  onDragLeave={() => setDragging(false)}
+                  onDrop={(e) => {
+                    e.preventDefault()
+                    setDragging(false)
+                    const file = e.dataTransfer.files[0]
+                    if (file) onImportFileChange(file)
+                  }}
+                  onClick={() => document.getElementById('import-file-input')?.click()}
+                >
+                  <Upload className="size-8 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground">{t('transactions.dragDropHint')}</p>
+                  <p className="text-xs text-muted-foreground">{t('transactions.acceptedFormats')}</p>
+                  <input
+                    id="import-file-input"
+                    type="file"
+                    accept=".csv,.pdf,text/csv,application/pdf"
+                    className="hidden"
+                    onChange={(e) => onImportFileChange(e.target.files?.[0] ?? null)}
+                  />
                 </div>
+
+                {csvFile && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <Receipt className="size-4" />
+                    <span className="font-medium">{csvFile.name}</span>
+                    {importMode === 'csv' && (
+                      <span className="text-muted-foreground">— {csvRows.length} row{csvRows.length === 1 ? '' : 's'}</span>
+                    )}
+                    {importMode === 'pdf' && pdfParsing && (
+                      <span className="flex items-center gap-1 text-muted-foreground">
+                        <Loader2 className="size-3 animate-spin" /> {t('transactions.parsingPdf')}
+                      </span>
+                    )}
+                    {importMode === 'pdf' && !pdfParsing && pdfTransactions.length > 0 && (
+                      <>
+                        {pdfBank && (
+                          <Badge variant="secondary" className="capitalize">
+                            {pdfBank.bank === 'unknown' ? t('transactions.unknownBank') : pdfBank.bank}
+                          </Badge>
+                        )}
+                        <span className="text-muted-foreground">
+                          — {t('transactions.transactionsFound', { count: pdfTransactions.length })}
+                        </span>
+                      </>
+                    )}
+                  </div>
+                )}
+
                 {csvParseErrors.length > 0 && (
                   <div className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
                     {csvParseErrors.slice(0, 3).map((err) => (
@@ -476,13 +661,33 @@ export default function TransactionsPage() {
                     ))}
                   </div>
                 )}
+                {pdfErrors.length > 0 && (
+                  <div className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+                    {pdfErrors.slice(0, 3).map((err) => (
+                      <p key={err}>{err}</p>
+                    ))}
+                  </div>
+                )}
+
+                {importMode === 'pdf' && !pdfParsing && pdfTransactions.some(tx => tx.flags?.includes('credit_card_aggregate')) && (
+                  <div className="rounded-md border border-yellow-500/30 bg-yellow-500/5 px-3 py-2 text-xs text-yellow-700 dark:text-yellow-400">
+                    {t('transactions.creditCardAggregateWarning')}
+                  </div>
+                )}
+
                 <DialogFooter className="border-0 bg-transparent p-0 sm:justify-end">
                   <Button type="button" variant="outline" onClick={() => setImportOpen(false)}>
                     {t('common.cancel')}
                   </Button>
-                  <Button type="button" disabled={!canProceedStep2} onClick={() => setImportStep(2)}>
-                    {t('common.next')}
-                  </Button>
+                  {importMode === 'csv' ? (
+                    <Button type="button" disabled={!canProceedStep1Csv} onClick={() => setImportStep(2)}>
+                      {t('common.next')}
+                    </Button>
+                  ) : (
+                    <Button type="button" disabled={!canProceedStep1Pdf} onClick={() => setImportStep(3)}>
+                      {t('transactions.reviewTransactions')}
+                    </Button>
+                  )}
                 </DialogFooter>
               </div>
             )}
@@ -611,69 +816,151 @@ export default function TransactionsPage() {
                     {t('transactions.importHelperText')}
                   </p>
                 </div>
-                <div className="rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>{t('common.date')}</TableHead>
-                        <TableHead>{t('common.type')}</TableHead>
-                        <TableHead>{t('common.description')}</TableHead>
-                        <TableHead className="text-end">{t('common.amount')}</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {previewMapped.length === 0 ? (
-                        <TableRow>
-                          <TableCell colSpan={4} className="text-center text-muted-foreground">
-                            {t('transactions.noPreviewRows')}
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        previewMapped.map((row, i) => (
-                          <TableRow key={i}>
-                            <TableCell className="whitespace-nowrap">{normalizeImportedDate(row.date)}</TableCell>
-                            <TableCell>
-                              <Badge variant="secondary" className="capitalize">
-                                {row.type}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="max-w-[180px] truncate">{row.description}</TableCell>
-                            <TableCell
-                              className={cn(
-                                'text-end tabular-nums',
-                                row.type === 'income' && 'text-emerald-600 dark:text-emerald-400',
-                                row.type === 'expense' && 'text-red-600 dark:text-red-400'
-                              )}
-                            >
-                              <PrivateMoney>{formatCurrency(row.amount, currency)}</PrivateMoney>
-                            </TableCell>
+
+                {importMode === 'csv' && (
+                  <>
+                    <div className="rounded-md border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>{t('common.date')}</TableHead>
+                            <TableHead>{t('common.type')}</TableHead>
+                            <TableHead>{t('common.description')}</TableHead>
+                            <TableHead className="text-end">{t('common.amount')}</TableHead>
                           </TableRow>
-                        ))
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
-                {csvRows.length > previewMapped.length && (
-                  <p className="text-xs text-muted-foreground">
-                    Showing first {previewMapped.length} of {csvRows.length} rows. Import will include all valid rows (
-                    {bulkPayload.length} ready).
-                  </p>
+                        </TableHeader>
+                        <TableBody>
+                          {previewMapped.length === 0 ? (
+                            <TableRow>
+                              <TableCell colSpan={4} className="text-center text-muted-foreground">
+                                {t('transactions.noPreviewRows')}
+                              </TableCell>
+                            </TableRow>
+                          ) : (
+                            previewMapped.map((row, i) => (
+                              <TableRow key={i}>
+                                <TableCell className="whitespace-nowrap">{normalizeImportedDate(row.date)}</TableCell>
+                                <TableCell>
+                                  <Badge variant="secondary" className="capitalize">
+                                    {row.type}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell className="max-w-[180px] truncate">{row.description}</TableCell>
+                                <TableCell
+                                  className={cn(
+                                    'text-end tabular-nums',
+                                    row.type === 'income' && 'text-emerald-600 dark:text-emerald-400',
+                                    row.type === 'expense' && 'text-red-600 dark:text-red-400'
+                                  )}
+                                >
+                                  <PrivateMoney>{formatCurrency(row.amount, currency)}</PrivateMoney>
+                                </TableCell>
+                              </TableRow>
+                            ))
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
+                    {csvRows.length > previewMapped.length && (
+                      <p className="text-xs text-muted-foreground">
+                        Showing first {previewMapped.length} of {csvRows.length} rows. Import will include all valid rows (
+                        {bulkPayload.length} ready).
+                      </p>
+                    )}
+                    {csvRows.length <= previewMapped.length && (
+                      <p className="text-xs text-muted-foreground">{bulkPayload.length} transaction(s) ready to import.</p>
+                    )}
+                  </>
                 )}
-                {csvRows.length <= previewMapped.length && (
-                  <p className="text-xs text-muted-foreground">{bulkPayload.length} transaction(s) ready to import.</p>
+
+                {importMode === 'pdf' && (
+                  <>
+                    <div className="rounded-md border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="w-10" />
+                            <TableHead>{t('common.date')}</TableHead>
+                            <TableHead>{t('common.type')}</TableHead>
+                            <TableHead>{t('common.description')}</TableHead>
+                            <TableHead className="text-end">{t('common.amount')}</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {pdfTransactions.length === 0 ? (
+                            <TableRow>
+                              <TableCell colSpan={5} className="text-center text-muted-foreground">
+                                {t('transactions.noPreviewRows')}
+                              </TableCell>
+                            </TableRow>
+                          ) : (
+                            pdfTransactions.map((tx, i) => {
+                              const isCcAgg = tx.flags?.includes('credit_card_aggregate')
+                              const isDupSuspect = tx.flags?.includes('duplicate_suspect')
+                              return (
+                                <TableRow key={i} className={cn(isCcAgg && 'opacity-60', isDupSuspect && 'bg-orange-500/5')}>
+                                  <TableCell>
+                                    <Checkbox
+                                      checked={pdfSelected.has(i)}
+                                      onCheckedChange={() => togglePdfRow(i)}
+                                    />
+                                  </TableCell>
+                                  <TableCell className="whitespace-nowrap">{tx.date}</TableCell>
+                                  <TableCell>
+                                    <div className="flex items-center gap-1 flex-wrap">
+                                      <Badge variant="secondary" className="capitalize">{tx.type}</Badge>
+                                      {isCcAgg && (
+                                        <Badge variant="outline" className="border-yellow-500 text-yellow-600 dark:text-yellow-400 text-[10px]">
+                                          {t('transactions.ccAggregate')}
+                                        </Badge>
+                                      )}
+                                      {isDupSuspect && (
+                                        <Badge variant="outline" className="border-orange-500 text-orange-600 dark:text-orange-400 text-[10px]">
+                                          {t('transactions.duplicateSuspect')}
+                                        </Badge>
+                                      )}
+                                    </div>
+                                  </TableCell>
+                                  <TableCell className="max-w-[180px] truncate">
+                                    {tx.description}
+                                    {tx.sourceCategory && (
+                                      <span className="ms-1 text-xs text-muted-foreground">({tx.sourceCategory})</span>
+                                    )}
+                                  </TableCell>
+                                  <TableCell
+                                    className={cn(
+                                      'text-end tabular-nums',
+                                      tx.type === 'income' && 'text-emerald-600 dark:text-emerald-400',
+                                      tx.type === 'expense' && 'text-red-600 dark:text-red-400'
+                                    )}
+                                  >
+                                    <PrivateMoney>{formatCurrency(tx.amount, currency)}</PrivateMoney>
+                                  </TableCell>
+                                </TableRow>
+                              )
+                            })
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {t('transactions.pdfImportReady', { selected: pdfSelected.size, total: pdfTransactions.length })}
+                    </p>
+                  </>
                 )}
+
                 <DialogFooter className="border-0 bg-transparent p-0 sm:justify-end">
-                  <Button type="button" variant="outline" onClick={() => setImportStep(2)}>
+                  <Button type="button" variant="outline" onClick={() => setImportStep(importMode === 'csv' ? 2 : 1)}>
                     {t('common.back')}
                   </Button>
                   <Button
                     type="button"
-                    disabled={!importAccountId || bulkPayload.length === 0 || bulkCreate.isPending}
+                    disabled={!importAccountId || activePayload.length === 0 || bulkCreate.isPending}
                     onClick={handleBulkImport}
                     className="gap-1.5"
                   >
                     {bulkCreate.isPending && <Loader2 className="size-4 animate-spin" />}
-                    {t('transactions.importCount', { count: bulkPayload.length })}
+                    {t('transactions.importCount', { count: activePayload.length })}
                   </Button>
                 </DialogFooter>
               </div>
@@ -833,6 +1120,40 @@ export default function TransactionsPage() {
                 </Button>
               </DialogFooter>
             </form>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog
+          open={deleteConfirmOpen}
+          onOpenChange={(open) => {
+            if (!open && !deleteTx.isPending) closeDeleteConfirm()
+          }}
+        >
+          <DialogContent className="sm:max-w-md" showCloseButton={!deleteTx.isPending}>
+            <DialogHeader>
+              <DialogTitle>{t('transactions.deleteDialogTitle')}</DialogTitle>
+              <DialogDescription>{t('transactions.deleteConfirm')}</DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="border-0 bg-transparent p-0 sm:justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={closeDeleteConfirm}
+                disabled={deleteTx.isPending}
+              >
+                {t('common.cancel')}
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                className="gap-1.5"
+                onClick={confirmDeleteTransaction}
+                disabled={deleteTx.isPending}
+              >
+                {deleteTx.isPending && <Loader2 className="size-4 animate-spin" />}
+                {t('common.delete')}
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </PageHeader>
@@ -1068,7 +1389,7 @@ export default function TransactionsPage() {
                             className="text-muted-foreground hover:text-destructive"
                             aria-label={t('transactions.deleteAriaLabel')}
                             disabled={deleteTx.isPending}
-                            onClick={() => handleDelete(tx.id)}
+                            onClick={() => openDeleteConfirm(tx.id)}
                           >
                             <Trash2 className="size-4" />
                           </Button>

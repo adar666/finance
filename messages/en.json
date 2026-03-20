@@ -1,6 +1,7 @@
 {
   "common": {
     "cancel": "Cancel",
+    "close": "Close",
     "save": "Save",
     "delete": "Delete",
     "back": "Back",
@@ -109,6 +110,12 @@
     "viewBudgets": "View budgets",
     "upNext": "Up next · 7 days",
     "managePlanning": "Manage in Planning",
+    "safeToSpend": "Safe to Spend",
+    "remaining": "remaining this month",
+    "income": "Income",
+    "recurringExpenses": "Recurring",
+    "savingsGoals": "Savings",
+    "spentSoFar": "Spent so far",
     "thisMonth": "This month",
     "last30": "Last 30 days",
     "last3Months": "Last 3 months",
@@ -137,9 +144,19 @@
   "transactions": {
     "title": "Transactions",
     "description": "Search, filter, and manage income, expenses, and transfers.",
+    "importFile": "Import",
     "importCsv": "Import CSV",
     "addTransaction": "Add transaction",
-    "importDialogTitle": "Import transactions from CSV",
+    "importDialogTitle": "Import transactions",
+    "dragDropHint": "Drag & drop a file here, or click to browse",
+    "acceptedFormats": "CSV or PDF (Isracard, Bank Hapoalim)",
+    "parsingPdf": "Parsing PDF…",
+    "transactionsFound": "{count} transaction{count, plural, one {} other {s}} found",
+    "unknownBank": "Unknown bank",
+    "creditCardAggregateWarning": "Credit card aggregate charges (e.g. Mastercard) are deselected by default to avoid double-counting with your credit card statement.",
+    "reviewTransactions": "Review transactions",
+    "ccAggregate": "CC Aggregate",
+    "pdfImportReady": "{selected} of {total} transaction(s) selected for import.",
     "stepUpload": "1. Upload",
     "stepMap": "2. Map columns",
     "stepPreview": "3. Preview",
@@ -174,9 +191,13 @@
     "dateRange": "Date range",
     "noTransactionsYet": "No transactions yet",
     "addOrImport": "Add a transaction or import a CSV to get started.",
+    "deleteDialogTitle": "Delete transaction?",
     "deleteConfirm": "Delete this transaction? This cannot be undone.",
     "deleteAriaLabel": "Delete transaction",
-    "failedToLoad": "Failed to load transactions"
+    "failedToLoad": "Failed to load transactions",
+    "transactionAdded": "Transaction added",
+    "transactionDeleted": "Transaction deleted",
+    "duplicateSuspect": "Possible duplicate"
   },
   "analytics": {
     "title": "Analytics",
@@ -238,6 +259,26 @@
     "receiptUploads": "Receipt uploads",
     "comingSoon": "Coming soon",
     "receiptDescription": "Receipt uploads — Coming soon. Attach receipt photos to transactions using Supabase Storage.",
+    "categorizationRules": "Auto-Categorization Rules",
+    "categorizationRulesDescription": "Create rules to automatically categorize imported transactions by description pattern.",
+    "rulePattern": "Pattern",
+    "rulePatternPlaceholder": "e.g. supermarket, שופרסל",
+    "ruleMatchType": "Match type",
+    "ruleContains": "Contains",
+    "ruleStartsWith": "Starts with",
+    "ruleExact": "Exact",
+    "ruleCategory": "Category",
+    "selectCategory": "Select category",
+    "addRule": "Add rule",
+    "rulePriority": "Priority",
+    "ruleCreated": "Rule created",
+    "ruleUpdated": "Rule updated",
+    "ruleDeleted": "Rule deleted",
+    "suggestRules": "Suggest rules",
+    "suggestRulesDescription": "Based on your last 3 months of categorized transactions, here are patterns that appear frequently.",
+    "noSuggestions": "No suggestions found. Categorize more transactions first.",
+    "addSuggestion": "Add",
+    "noRulesYet": "No categorization rules yet. Add one above to auto-categorize imported transactions.",
     "dangerZone": "Danger zone",
     "dangerDescription": "Permanently delete all financial data for your account. This cannot be undone.",
     "deleteAllData": "Delete all my data",
@@ -277,6 +318,7 @@
     "budget": "Budget",
     "spent": "Spent",
     "overLimit": "{amount} over the limit",
+    "deleteDialogTitle": "Delete budget?",
     "deleteConfirm": "Delete this budget? This cannot be undone.",
     "editBudgetAriaLabel": "Edit budget",
     "deleteBudgetAriaLabel": "Delete budget"
@@ -392,6 +434,7 @@
     "growthOverTime": "Growth over time",
     "growthHint": "End-of-year balance (yearly steps)",
     "balance": "Balance",
+    "deleteRuleDialogTitle": "Delete recurring rule?",
     "deleteRuleConfirm": "Delete this recurring rule?"
   },
   "accounts": {
@@ -420,5 +463,13 @@
     "deleteAccountMessage": "This will permanently remove {name} and cannot be undone. Linked transactions may be affected depending on your database rules.",
     "couldNotLoad": "Could not load accounts.",
     "createAccount": "Create account"
+  },
+  "quickAdd": {
+    "title": "Quick Add",
+    "amount": "Amount",
+    "category": "Category",
+    "descriptionPlaceholder": "What was this for?",
+    "save": "Save transaction",
+    "quickExpense": "Quick expense"
   }
 }
