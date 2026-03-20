@@ -4,7 +4,7 @@ import { defineConfig, devices } from '@playwright/test'
 const port = process.env.PLAYWRIGHT_PORT ?? '3001'
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? `http://127.0.0.1:${port}`
 
-/** Dummy public keys so `next build` / middleware can run in CI without real Supabase. */
+/** Dummy public keys so `next build` / proxy can run in CI without real Supabase. */
 const nextPublicEnv = {
   NEXT_PUBLIC_SUPABASE_URL:
     process.env.NEXT_PUBLIC_SUPABASE_URL ?? 'https://test.supabase.co',
