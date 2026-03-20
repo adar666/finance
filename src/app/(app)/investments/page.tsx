@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState, useCallback, type FormEvent } from 'react'
+import { useTranslations } from 'next-intl'
 import {
   PieChart,
   Pie,
@@ -74,15 +75,6 @@ const CHART_COLORS = [
 
 const INVESTMENT_TYPES: InvestmentType[] = ['stock', 'etf', 'crypto', 'bond', 'other']
 
-const TYPE_LABELS: Record<InvestmentType, string> = {
-  stock: 'Stock',
-  etf: 'ETF',
-  crypto: 'Crypto',
-  bond: 'Bond',
-  other: 'Other',
-}
-
-const INVESTMENT_TYPE_SELECT_ITEMS = selectItemsFromMap(INVESTMENT_TYPES, TYPE_LABELS)
 
 const CURRENCY_OPTIONS = ['USD', 'ILS', 'EUR'] as const
 
@@ -287,39 +279,45 @@ function InvestmentFormFields({
   form,
   onChange,
   costBasisLabel,
+  t,
+  typeLabels,
+  typeSelectItems,
 }: {
   form: InvestmentFormState
   onChange: (next: InvestmentFormState) => void
   costBasisLabel: string
+  t: ReturnType<typeof useTranslations>
+  typeLabels: Record<InvestmentType, string>
+  typeSelectItems: ReturnType<typeof selectItemsFromMap>
 }) {
   return (
     <div className="grid gap-4 py-2">
       <div className="grid gap-2 sm:grid-cols-2 sm:gap-4">
         <div className="grid gap-2">
-          <Label htmlFor="inv-symbol">Symbol</Label>
+          <Label htmlFor="inv-symbol">{t('investments.symbol')}</Label>
           <Input
             id="inv-symbol"
             value={form.symbol}
             onChange={(e) => onChange({ ...form, symbol: e.target.value })}
-            placeholder="e.g. AAPL"
+            placeholder={t('investments.symbolPlaceholder')}
             autoComplete="off"
             spellCheck={false}
           />
         </div>
         <div className="grid gap-2">
-          <Label htmlFor="inv-type">Type</Label>
+          <Label htmlFor="inv-type">{t('common.type')}</Label>
           <Select
             value={form.type}
             onValueChange={(v) => onChange({ ...form, type: v as InvestmentType })}
-            items={INVESTMENT_TYPE_SELECT_ITEMS}
+            items={typeSelectItems}
           >
             <SelectTrigger id="inv-type" className="w-full">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {INVESTMENT_TYPES.map((t) => (
-                <SelectItem key={t} value={t}>
-                  {TYPE_LABELS[t]}
+              {INVESTMENT_TYPES.map((tp) => (
+                <SelectItem key={tp} value={tp}>
+                  {typeLabels[tp]}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -327,18 +325,18 @@ function InvestmentFormFields({
         </div>
       </div>
       <div className="grid gap-2">
-        <Label htmlFor="inv-name">Name</Label>
+        <Label htmlFor="inv-name">{t('common.name')}</Label>
         <Input
           id="inv-name"
           value={form.name}
           onChange={(e) => onChange({ ...form, name: e.target.value })}
-          placeholder="e.g. Apple Inc."
+          placeholder={t('investments.namePlaceholder')}
           autoComplete="off"
         />
       </div>
       <div className="grid gap-2 sm:grid-cols-2 sm:gap-4">
         <div className="grid gap-2">
-          <Label htmlFor="inv-shares">Shares</Label>
+          <Label htmlFor="inv-shares">{t('investments.shares')}</Label>
           <Input
             id="inv-shares"
             type="number"
@@ -349,7 +347,7 @@ function InvestmentFormFields({
           />
         </div>
         <div className="grid gap-2">
-          <Label htmlFor="inv-currency">Currency</Label>
+          <Label htmlFor="inv-currency">{t('settings.currency')}</Label>
           <Select
             value={form.currency}
             onValueChange={(v) => onChange({ ...form, currency: v ?? form.currency })}
@@ -379,7 +377,7 @@ function InvestmentFormFields({
         />
       </div>
       <div className="grid gap-2">
-        <Label htmlFor="inv-price">Current price (per share)</Label>
+        <Label htmlFor="inv-price">{t('investments.currentPrice')}</Label>
         <Input
           id="inv-price"
           type="number"
@@ -394,7 +392,25 @@ function InvestmentFormFields({
 }
 
 export default function InvestmentsPage() {
+  const t = useTranslations()
   const currency = useCurrency()
+
+  const TYPE_LABELS: Record<InvestmentType, string> = useMemo(
+    () => ({
+      stock: t('investments.stock'),
+      etf: t('investments.etf'),
+      crypto: t('investments.crypto'),
+      bond: t('investments.bond'),
+      other: t('investments.other'),
+    }),
+    [t]
+  )
+
+  const INVESTMENT_TYPE_SELECT_ITEMS = useMemo(
+    () => selectItemsFromMap(INVESTMENT_TYPES, TYPE_LABELS),
+    [TYPE_LABELS]
+  )
+
   const { data: investments = [], isPending, isError, error } = useInvestments()
   const createMut = useCreateInvestment()
   const updateMut = useUpdateInvestment()
@@ -504,7 +520,7 @@ export default function InvestmentsPage() {
   if (isPending) {
     return (
       <>
-        <PageHeader title="Investments" description="Holdings, allocation, and performance" />
+        <PageHeader title={t('investments.title')} description={t('investments.description')} />
         <InvestmentsPageSkeleton />
       </>
     )
@@ -513,11 +529,11 @@ export default function InvestmentsPage() {
   if (isError) {
     return (
       <>
-        <PageHeader title="Investments" description="Holdings, allocation, and performance" />
+        <PageHeader title={t('investments.title')} description={t('investments.description')} />
         <Card className="border-destructive/30 bg-destructive/5">
           <CardContent className="pt-6">
             <p className="text-sm text-destructive">
-              {error instanceof Error ? error.message : 'Could not load investments.'}
+              {error instanceof Error ? error.message : t('investments.couldNotLoad')}
             </p>
           </CardContent>
         </Card>
@@ -529,7 +545,7 @@ export default function InvestmentsPage() {
 
   return (
     <>
-      <PageHeader title="Investments" description="Holdings, allocation, and performance">
+      <PageHeader title={t('investments.title')} description={t('investments.description')}>
         <div className="flex flex-wrap items-center gap-2">
           <Button
             type="button"
@@ -540,7 +556,7 @@ export default function InvestmentsPage() {
             onClick={() => void handleRefreshPrices()}
           >
             <RefreshCw className={cn('h-4 w-4', updateMut.isPending && 'animate-spin')} />
-            Refresh prices
+            {t('investments.refreshPrices')}
           </Button>
           <Dialog
             open={addOpen}
@@ -553,22 +569,25 @@ export default function InvestmentsPage() {
               render={
                 <Button type="button" size="sm" className="gap-1.5">
                   <Plus className="h-4 w-4" />
-                  Add position
+                  {t('investments.addPosition')}
                 </Button>
               }
             />
             <DialogContent className="sm:max-w-md" showCloseButton>
               <form onSubmit={handleCreate}>
                 <DialogHeader>
-                  <DialogTitle>Add position</DialogTitle>
+                  <DialogTitle>{t('investments.addPosition')}</DialogTitle>
                   <DialogDescription>
-                    Enter symbol, cost basis (total for the position), and current price per share.
+                    {t('investments.addDescription')}
                   </DialogDescription>
                 </DialogHeader>
                 <InvestmentFormFields
                   form={addForm}
                   onChange={setAddForm}
-                  costBasisLabel="Cost basis (total)"
+                  costBasisLabel={t('investments.costBasis')}
+                  t={t}
+                  typeLabels={TYPE_LABELS}
+                  typeSelectItems={INVESTMENT_TYPE_SELECT_ITEMS}
                 />
                 <DialogFooter className="border-0 bg-transparent p-0 pt-2 sm:justify-end">
                   <Button
@@ -577,7 +596,7 @@ export default function InvestmentsPage() {
                     onClick={() => setAddOpen(false)}
                     disabled={createMut.isPending}
                   >
-                    Cancel
+                    {t('common.cancel')}
                   </Button>
                   <Button
                     type="submit"
@@ -585,7 +604,7 @@ export default function InvestmentsPage() {
                       createMut.isPending || !addForm.symbol.trim() || !addForm.name.trim()
                     }
                   >
-                    {createMut.isPending ? 'Saving…' : 'Add position'}
+                    {createMut.isPending ? t('common.saving') : t('investments.addPosition')}
                   </Button>
                 </DialogFooter>
               </form>
@@ -600,40 +619,40 @@ export default function InvestmentsPage() {
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
                 <DollarSign className="h-4 w-4" aria-hidden />
-                Portfolio value
+                {t('investments.portfolioValue')}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <SummaryAmounts rows={rollups.map((r) => ({ currency: r.currency, value: r.value }))} />
-              <p className="mt-2 text-xs text-muted-foreground">Sum of position values (shares × price)</p>
+              <p className="mt-2 text-xs text-muted-foreground">{t('investments.portfolioValueHint')}</p>
             </CardContent>
           </Card>
           <Card className="border-border/80 shadow-sm">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total cost basis</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">{t('investments.totalCostBasis')}</CardTitle>
             </CardHeader>
             <CardContent>
               <SummaryAmounts rows={rollups.map((r) => ({ currency: r.currency, value: r.cost }))} />
-              <p className="mt-2 text-xs text-muted-foreground">Recorded cost for all positions</p>
+              <p className="mt-2 text-xs text-muted-foreground">{t('investments.totalCostBasisHint')}</p>
             </CardContent>
           </Card>
           <Card className="border-border/80 shadow-sm">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total gain / loss</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">{t('investments.totalGainLoss')}</CardTitle>
             </CardHeader>
             <CardContent>
               <SummaryGainLoss rollups={rollups} />
-              <p className="mt-2 text-xs text-muted-foreground">Value minus cost basis</p>
+              <p className="mt-2 text-xs text-muted-foreground">{t('investments.totalGainLossHint')}</p>
             </CardContent>
           </Card>
           <Card className="border-border/80 shadow-sm">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Return</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">{t('investments.return')}</CardTitle>
             </CardHeader>
             <CardContent>
               <SummaryPercents rollups={rollups} />
               <p className="mt-2 text-xs text-muted-foreground">
-                (Value − cost) ÷ cost × 100; — if cost is zero
+                {t('investments.returnHint')}
               </p>
             </CardContent>
           </Card>
@@ -645,13 +664,13 @@ export default function InvestmentsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <TrendingUp className="h-4 w-4" aria-hidden />
-              Allocation
+              {t('investments.allocation')}
             </CardTitle>
             <p className="text-sm text-muted-foreground">
-              By market value per holding
+              {t('investments.allocationHint')}
               {mixedCurrencies && (
                 <span className="block mt-1 text-amber-600/90 dark:text-amber-400/90">
-                  Mixed currencies: slice sizes use raw numbers without FX conversion.
+                  {t('investments.mixedCurrencies')}
                 </span>
               )}
             </p>
@@ -659,7 +678,7 @@ export default function InvestmentsPage() {
           <CardContent>
             {pieData.length === 0 ? (
               <p className="text-sm text-muted-foreground py-12 text-center">
-                No position value to chart (check shares and prices).
+                {t('investments.noPositionValue')}
               </p>
             ) : (
               <div className="h-[280px] w-full min-w-0">
@@ -684,13 +703,13 @@ export default function InvestmentsPage() {
                         const payload = item?.payload as PieDatum | undefined
                         const cur = payload?.currency ?? currency
                         if (value === undefined || value === null) {
-                          return ['—', 'Value']
+                          return ['—', t('common.value')]
                         }
                         const v = typeof value === 'number' ? value : Number(value)
                         if (Number.isNaN(v)) {
-                          return ['—', 'Value']
+                          return ['—', t('common.value')]
                         }
-                        return [formatCurrency(v, cur), 'Value']
+                        return [formatCurrency(v, cur), t('common.value')]
                       }}
                     />
                   </PieChart>
@@ -708,9 +727,9 @@ export default function InvestmentsPage() {
               <TrendingUp className="h-7 w-7 text-muted-foreground" />
             </div>
             <div className="max-w-sm space-y-1">
-              <p className="font-medium">No positions yet</p>
+              <p className="font-medium">{t('investments.noPositions')}</p>
               <p className="text-sm text-muted-foreground">
-                Track stocks, ETFs, crypto, and bonds. Add a position to see allocation and performance.
+                {t('investments.noPositionsHint')}
               </p>
             </div>
             <Button
@@ -721,30 +740,30 @@ export default function InvestmentsPage() {
               }}
             >
               <Plus className="h-4 w-4" />
-              Add position
+              {t('investments.addPosition')}
             </Button>
           </CardContent>
         </Card>
       ) : (
         <Card className="border-border/80 shadow-sm">
           <CardHeader>
-            <CardTitle>Holdings</CardTitle>
-            <p className="text-sm text-muted-foreground">All positions, newest last in list order</p>
+            <CardTitle>{t('investments.holdings')}</CardTitle>
+            <p className="text-sm text-muted-foreground">{t('investments.holdingsHint')}</p>
           </CardHeader>
           <CardContent className="px-0 sm:px-6">
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Symbol</TableHead>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead className="text-right">Shares</TableHead>
-                    <TableHead className="text-right">Cost basis</TableHead>
-                    <TableHead className="text-right">Price</TableHead>
-                    <TableHead className="text-right">Value</TableHead>
-                    <TableHead className="text-right">Gain / loss</TableHead>
-                    <TableHead className="w-[100px] text-right">Actions</TableHead>
+                    <TableHead>{t('investments.symbol')}</TableHead>
+                    <TableHead>{t('common.name')}</TableHead>
+                    <TableHead>{t('common.type')}</TableHead>
+                    <TableHead className="text-right">{t('investments.shares')}</TableHead>
+                    <TableHead className="text-right">{t('investments.costBasis')}</TableHead>
+                    <TableHead className="text-right">{t('investments.price')}</TableHead>
+                    <TableHead className="text-right">{t('common.value')}</TableHead>
+                    <TableHead className="text-right">{t('investments.gainLoss')}</TableHead>
+                    <TableHead className="w-[100px] text-right">{t('common.actions')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -841,13 +860,16 @@ export default function InvestmentsPage() {
         <DialogContent className="sm:max-w-md" showCloseButton>
           <form onSubmit={handleUpdate}>
             <DialogHeader>
-              <DialogTitle>Edit position</DialogTitle>
-              <DialogDescription>Update {editing?.symbol ?? 'this holding'}.</DialogDescription>
+              <DialogTitle>{t('investments.editPosition')}</DialogTitle>
+              <DialogDescription>{t('investments.editPositionHint', { symbol: editing?.symbol ?? '' })}</DialogDescription>
             </DialogHeader>
             <InvestmentFormFields
               form={editForm}
               onChange={setEditForm}
-              costBasisLabel="Cost basis (total)"
+              costBasisLabel={t('investments.costBasis')}
+              t={t}
+              typeLabels={TYPE_LABELS}
+              typeSelectItems={INVESTMENT_TYPE_SELECT_ITEMS}
             />
             <DialogFooter className="border-0 bg-transparent p-0 pt-2 sm:justify-end">
               <Button
@@ -856,7 +878,7 @@ export default function InvestmentsPage() {
                 onClick={() => setEditOpen(false)}
                 disabled={updateMut.isPending}
               >
-                Cancel
+                {t('common.cancel')}
               </Button>
               <Button
                 type="submit"
@@ -864,7 +886,7 @@ export default function InvestmentsPage() {
                   updateMut.isPending || !editForm.symbol.trim() || !editForm.name.trim()
                 }
               >
-                {updateMut.isPending ? 'Saving…' : 'Save changes'}
+                {updateMut.isPending ? t('common.saving') : t('common.saveChanges')}
               </Button>
             </DialogFooter>
           </form>
@@ -880,11 +902,9 @@ export default function InvestmentsPage() {
       >
         <DialogContent className="sm:max-w-sm" showCloseButton>
           <DialogHeader>
-            <DialogTitle>Delete position?</DialogTitle>
+            <DialogTitle>{t('investments.deletePositionTitle')}</DialogTitle>
             <DialogDescription>
-              This will permanently remove{' '}
-              <span className="font-medium text-foreground">{deleting?.symbol}</span> ({deleting?.name}
-              ). This cannot be undone.
+              {t('investments.deletePositionMessage', { symbol: deleting?.symbol ?? '', name: deleting?.name ?? '' })}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="border-0 bg-transparent p-0 pt-2 sm:justify-end">
@@ -894,7 +914,7 @@ export default function InvestmentsPage() {
               onClick={() => setDeleteOpen(false)}
               disabled={deleteMut.isPending}
             >
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button
               type="button"
@@ -902,7 +922,7 @@ export default function InvestmentsPage() {
               onClick={handleDeleteConfirm}
               disabled={deleteMut.isPending}
             >
-              {deleteMut.isPending ? 'Deleting…' : 'Delete'}
+              {deleteMut.isPending ? t('common.deleting') : t('common.delete')}
             </Button>
           </DialogFooter>
         </DialogContent>

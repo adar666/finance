@@ -2,6 +2,7 @@
 
 import * as React from 'react'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import {
   LayoutDashboard,
   ArrowLeftRight,
@@ -25,21 +26,22 @@ import {
   CommandSeparator,
 } from '@/components/ui/command'
 
-const NAV = [
-  { href: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/accounts', label: 'Accounts', icon: Wallet },
-  { href: '/transactions', label: 'Transactions', icon: ArrowLeftRight },
-  { href: '/analytics', label: 'Analytics', icon: BarChart3 },
-  { href: '/budgets', label: 'Budgets', icon: PiggyBank },
-  { href: '/savings', label: 'Savings', icon: Target },
-  { href: '/investments', label: 'Investments', icon: TrendingUp },
-  { href: '/planning', label: 'Planning', icon: Calculator },
-  { href: '/settings', label: 'Settings', icon: Settings },
-] as const
-
 export function CommandPalette() {
+  const t = useTranslations()
   const [open, setOpen] = React.useState(false)
   const router = useRouter()
+
+  const NAV = [
+    { href: '/', label: t('nav.dashboard'), icon: LayoutDashboard },
+    { href: '/accounts', label: t('nav.accounts'), icon: Wallet },
+    { href: '/transactions', label: t('nav.transactions'), icon: ArrowLeftRight },
+    { href: '/analytics', label: t('nav.analytics'), icon: BarChart3 },
+    { href: '/budgets', label: t('nav.budgets'), icon: PiggyBank },
+    { href: '/savings', label: t('nav.savings'), icon: Target },
+    { href: '/investments', label: t('nav.investments'), icon: TrendingUp },
+    { href: '/planning', label: t('nav.planning'), icon: Calculator },
+    { href: '/settings', label: t('nav.settings'), icon: Settings },
+  ]
 
   React.useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -63,21 +65,21 @@ export function CommandPalette() {
   return (
     <CommandDialog open={open} onOpenChange={setOpen} showCloseButton={false}>
       <Command>
-        <CommandInput placeholder="Search pages and actions…" />
+        <CommandInput placeholder={t('commandPalette.placeholder')} />
         <CommandList>
-          <CommandEmpty>No results found.</CommandEmpty>
-          <CommandGroup heading="Actions">
+          <CommandEmpty>{t('commandPalette.noResults')}</CommandEmpty>
+          <CommandGroup heading={t('commandPalette.actionsHeading')}>
             <CommandItem
               onSelect={() =>
                 run(() => router.push('/transactions?add=1'))
               }
             >
               <PlusCircle />
-              Add transaction
+              {t('commandPalette.addTransaction')}
             </CommandItem>
           </CommandGroup>
           <CommandSeparator />
-          <CommandGroup heading="Navigation">
+          <CommandGroup heading={t('commandPalette.navigationHeading')}>
             {NAV.map(({ href, label, icon: Icon }) => (
               <CommandItem
                 key={href}

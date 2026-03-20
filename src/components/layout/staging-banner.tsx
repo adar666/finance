@@ -1,10 +1,13 @@
 import { AlertTriangle } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 
 /**
  * Staging strip — use only when `isStagingFinanceHost(host)` is true (see root layout).
  * Fixed to the top of the viewport so it stays visible on full-screen routes (e.g. /login).
  */
 export function StagingBannerBar() {
+  const t = useTranslations('staging')
+
   return (
     <div
       role="status"
@@ -13,9 +16,9 @@ export function StagingBannerBar() {
     >
       <AlertTriangle className="size-4 shrink-0 opacity-90" aria-hidden />
       <span>
-        <strong>Staging</strong>
+        <strong>{t('label')}</strong>
         {' — '}
-        You are on a test environment. Data here is not production.
+        {t('message')}
       </span>
     </div>
   )

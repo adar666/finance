@@ -24,6 +24,7 @@ import { useCategories } from '@/lib/hooks/use-categories'
 import { useCurrency } from '@/lib/hooks/use-currency'
 import { formatCurrency, formatCompact, formatPercent } from '@/lib/utils/currency'
 import type { Category, Transaction } from '@/types/database'
+import { useTranslations } from 'next-intl'
 
 const CHART_PALETTE = [
   '#2dd4bf',
@@ -58,14 +59,16 @@ function monthKeysDescending(count: number, now: Date): string[] {
 function categoryNameForId(
   id: string,
   categories: Category[],
-  fallbackIndex: number
+  fallbackIndex: number,
+  uncategorizedLabel: string,
+  categoryLabel: string
 ): { name: string; color: string } {
   if (id === UNCATEGORIZED_ID) {
-    return { name: 'Uncategorized', color: CHART_PALETTE[CHART_PALETTE.length - 1] }
+    return { name: uncategorizedLabel, color: CHART_PALETTE[CHART_PALETTE.length - 1] }
   }
   const c = categories.find((x) => x.id === id)
   return {
-    name: c?.name ?? 'Category',
+    name: c?.name ?? categoryLabel,
     color: c?.color ?? CHART_PALETTE[fallbackIndex % CHART_PALETTE.length],
   }
 }
@@ -83,6 +86,7 @@ type StackedCategoryTooltipProps = {
   label?: string | number
   series: StackedSeries[]
   currency: string
+  totalLabel: string
 }
 
 function ChartCardSkeleton() {
@@ -105,6 +109,7 @@ function StackedCategoryTooltip({
   label,
   series,
   currency,
+  totalLabel,
 }: StackedCategoryTooltipProps) {
   if (!active || !payload?.length) return null
   const labelStr = label != null ? String(label) : ''
@@ -126,7 +131,7 @@ function StackedCategoryTooltip({
       style={TOOLTIP_STYLE}
     >
       <p className="mb-2 border-b border-border pb-1 text-xs font-medium">{labelStr}</p>
-      <ScrollArea className="max-h-[min(16rem,40vh)] pr-2">
+      <ScrollArea className="max-h-[min(16rem,40vh)] pe-2">
         <ul className="space-y-1.5 text-xs">
           {rows.map((r) => {
             const m = metaByKey.get(r.key)
@@ -147,13 +152,14 @@ function StackedCategoryTooltip({
         </ul>
       </ScrollArea>
       <p className="mt-2 border-t border-border pt-1.5 text-xs font-medium tabular-nums">
-        Total {formatCurrency(total, currency)}
+        {totalLabel} {formatCurrency(total, currency)}
       </p>
     </div>
   )
 }
 
 export default function AnalyticsPage() {
+  const t = useTranslations()
   const currency = useCurrency()
   const periodKey = format(startOfMonth(new Date()), 'yyyy-MM')
 
@@ -224,10 +230,10 @@ export default function AnalyticsPage() {
     const topSet = new Set(topIds)
 
     const series: StackedSeries[] = topIds.map((id, i) => {
-      const { name, color } = categoryNameForId(id, expenseCategories, i)
+      const { name, color } = categoryNameForId(id, expenseCategories, i, t('common.uncategorized'), t('common.category'))
       return { dataKey: `s${i}`, name, color }
     })
-    series.push({ dataKey: 'other', name: 'Other categories', color: '#94a3b8' })
+    series.push({ dataKey: 'other', name: t('analytics.otherCategories'), color: '#94a3b8' })
 
     const spendByMonth = new Map<string, Map<string, number>>()
     for (const mk of last6MonthKeys) spendByMonth.set(mk, new Map())
@@ -260,17 +266,19 @@ export default function AnalyticsPage() {
     })
 
     return { stackedSeries: series, stackedMonthRows: rows }
-  }, [transactions, expenseCategories, last6MonthKeys])
+  }, [transactions, expenseCategories, last6MonthKeys, t])
 
   /** Pareto / concentration — last 12 months expenses */
   const spendingConcentration = useMemo(() => {
+    const uncatLabel = t('common.uncategorized')
+    const catLabel = t('common.category')
     const totals = new Map<string, { name: string; color: string; total: number }>()
     for (const t of transactions as Transaction[]) {
       if (t.type !== 'expense') continue
       const mk = t.date.slice(0, 7)
       if (!last12MonthKeys.includes(mk)) continue
       const id = t.category_id ?? UNCATEGORIZED_ID
-      const { name, color } = categoryNameForId(id, expenseCategories, totals.size)
+      const { name, color } = categoryNameForId(id, expenseCategories, totals.size, uncatLabel, catLabel)
       const prev = totals.get(id)
       if (prev) prev.total += t.amount
       else totals.set(id, { name, color, total: t.amount })
@@ -287,7 +295,7 @@ export default function AnalyticsPage() {
     })
     const top3Share = grand > 0 ? withPct.slice(0, 3).reduce((s, x) => s + x.pct, 0) : 0
     return { rows: withPct, grandTotal: grand, top3SharePct: top3Share }
-  }, [transactions, expenseCategories, last12MonthKeys])
+  }, [transactions, expenseCategories, last12MonthKeys, t])
 
   const avgSavingsRate6m = useMemo(() => {
     const last6 = monthlyIncomeExpense.slice(-6)
@@ -299,11 +307,12 @@ export default function AnalyticsPage() {
   }, [monthlyIncomeExpense])
 
   const topExpenseCategories = useMemo(() => {
+    const uncatLabel = t('common.uncategorized')
     const totals = new Map<string, { name: string; color: string; total: number }>()
     for (const t of transactions as Transaction[]) {
       if (t.type !== 'expense') continue
       const id = t.category_id ?? UNCATEGORIZED_ID
-      const name = t.category?.name ?? 'Uncategorized'
+      const name = t.category?.name ?? uncatLabel
       const color =
         t.category?.color ??
         CHART_PALETTE[Math.abs(id.split('').reduce((a, ch) => a + ch.charCodeAt(0), 0)) % CHART_PALETTE.length]
@@ -317,7 +326,7 @@ export default function AnalyticsPage() {
       .slice(0, 10)
     const max = list[0]?.total ?? 1
     return list.map((row) => ({ ...row, ratio: max > 0 ? Math.round((row.total / max) * 100) : 0 }))
-  }, [transactions])
+  }, [transactions, t])
 
   const chartTooltipFormatter = (value: unknown) => {
     const n = typeof value === 'number' ? value : Number(value)
@@ -329,8 +338,8 @@ export default function AnalyticsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Analytics"
-        description="Cash flow, spending mix, savings rate, and where your money concentrates."
+        title={t('analytics.title')}
+        description={t('analytics.description')}
       />
 
       {loading ? (
@@ -353,8 +362,8 @@ export default function AnalyticsPage() {
         <>
           <Card>
             <CardHeader>
-              <CardTitle className="tracking-tight">Income & expenses by month</CardTitle>
-              <p className="text-sm text-muted-foreground">Last 12 months · stacked totals</p>
+              <CardTitle className="tracking-tight">{t('analytics.incomeExpensesByMonth')}</CardTitle>
+              <p className="text-sm text-muted-foreground">{t('analytics.last12Months')}</p>
             </CardHeader>
             <CardContent>
               <div className="h-[min(22rem,55vw)] w-full min-h-[220px] min-w-0">
@@ -375,7 +384,7 @@ export default function AnalyticsPage() {
                       fill="var(--success)"
                       radius={[0, 0, 0, 0]}
                       maxBarSize={36}
-                      name="Income"
+                      name={t('common.income')}
                     />
                     <Bar
                       dataKey="expenses"
@@ -383,7 +392,7 @@ export default function AnalyticsPage() {
                       fill="var(--destructive)"
                       radius={[4, 4, 0, 0]}
                       maxBarSize={36}
-                      name="Expenses"
+                      name={t('common.expense')}
                     />
                   </BarChart>
                 </ResponsiveContainer>
@@ -391,11 +400,11 @@ export default function AnalyticsPage() {
               <div className="mt-4 flex flex-wrap gap-4 text-xs text-muted-foreground">
                 <span className="inline-flex items-center gap-1.5">
                   <span className="inline-block size-2.5 rounded-sm bg-[var(--success)]" />
-                  Income
+                  {t('common.income')}
                 </span>
                 <span className="inline-flex items-center gap-1.5">
                   <span className="inline-block size-2.5 rounded-sm bg-[var(--destructive)]" />
-                  Expenses
+                  {t('common.expense')}
                 </span>
               </div>
             </CardContent>
@@ -404,10 +413,9 @@ export default function AnalyticsPage() {
           <div className="grid gap-4 lg:grid-cols-2">
             <Card className="min-w-0 lg:col-span-2">
               <CardHeader>
-                <CardTitle className="tracking-tight">Net cash flow & savings rate</CardTitle>
+                <CardTitle className="tracking-tight">{t('analytics.netCashFlow')}</CardTitle>
                 <p className="text-sm text-muted-foreground">
-                  Bars = income minus expenses · Line = savings rate (% of income saved). Common rule of thumb: aim
-                  for a positive, stable trend.
+                  {t('analytics.netCashFlowDescription')}
                 </p>
               </CardHeader>
               <CardContent>
@@ -436,7 +444,7 @@ export default function AnalyticsPage() {
                       <Tooltip
                         contentStyle={TOOLTIP_STYLE}
                         formatter={(value, name) => {
-                          if (name === 'Savings rate') {
+                          if (name === t('analytics.savingsRate')) {
                             const n = typeof value === 'number' ? value : Number(value)
                             return [`${Number.isFinite(n) ? n.toFixed(1) : '—'}%`, name]
                           }
@@ -444,7 +452,7 @@ export default function AnalyticsPage() {
                           return [formatCurrency(Number.isFinite(n) ? n : 0, currency), name]
                         }}
                       />
-                      <Bar yAxisId="left" dataKey="net" name="Net flow" maxBarSize={32} radius={[4, 4, 0, 0]}>
+                      <Bar yAxisId="left" dataKey="net" name={t('analytics.netFlow')} maxBarSize={32} radius={[4, 4, 0, 0]}>
                         {monthlyIncomeExpense.map((e) => (
                           <Cell
                             key={e.monthKey}
@@ -457,7 +465,7 @@ export default function AnalyticsPage() {
                         yAxisId="right"
                         type="monotone"
                         dataKey="savingsRatePct"
-                        name="Savings rate"
+                        name={t('analytics.savingsRate')}
                         stroke="hsl(var(--primary))"
                         strokeWidth={2}
                         dot={{ r: 3, fill: 'hsl(var(--primary))' }}
@@ -468,11 +476,11 @@ export default function AnalyticsPage() {
                 </div>
                 {avgSavingsRate6m != null && (
                   <p className="mt-3 text-xs text-muted-foreground">
-                    Trailing 6-month average savings rate:{' '}
+                    {t('analytics.trailing6mAvg')}{' '}
                     <span className="font-medium text-foreground tabular-nums">
                       {formatPercent(avgSavingsRate6m, 1)}
                     </span>{' '}
-                    of income
+                    {t('analytics.ofIncome')}
                   </p>
                 )}
               </CardContent>
@@ -480,25 +488,24 @@ export default function AnalyticsPage() {
 
             <Card className="min-w-0">
               <CardHeader>
-                <CardTitle className="tracking-tight">Spending concentration</CardTitle>
+                <CardTitle className="tracking-tight">{t('analytics.spendingConcentration')}</CardTitle>
                 <p className="text-sm text-muted-foreground">
-                  Pareto view: how much of total spending sits in your top categories (last 12 months). Helps spot
-                  over-reliance on a few buckets.
+                  {t('analytics.spendingConcentrationDescription')}
                 </p>
               </CardHeader>
               <CardContent className="space-y-4">
                 {spendingConcentration.grandTotal <= 0 ? (
-                  <p className="text-sm text-muted-foreground">No expense data in this period yet.</p>
+                  <p className="text-sm text-muted-foreground">{t('analytics.noExpenseData')}</p>
                 ) : (
                   <>
                     <div className="rounded-lg border bg-muted/30 px-3 py-2.5 text-sm">
-                      <span className="text-muted-foreground">Top 3 categories = </span>
+                      <span className="text-muted-foreground">{t('analytics.top3Categories')}</span>
                       <span className="font-semibold tabular-nums text-foreground">
                         {spendingConcentration.top3SharePct.toFixed(1)}%
                       </span>
-                      <span className="text-muted-foreground"> of all expenses</span>
+                      <span className="text-muted-foreground">{t('analytics.ofAllExpenses')}</span>
                     </div>
-                    <ScrollArea className="h-[min(16rem,40vh)] pr-3">
+                    <ScrollArea className="h-[min(16rem,40vh)] pe-3">
                       <ul className="space-y-3 text-sm">
                         {spendingConcentration.rows.slice(0, 12).map((row) => (
                           <li key={row.id} className="space-y-1">
@@ -531,10 +538,9 @@ export default function AnalyticsPage() {
 
             <Card className="min-w-0">
               <CardHeader>
-                <CardTitle className="tracking-tight">Expense trend by category</CardTitle>
+                <CardTitle className="tracking-tight">{t('analytics.expenseTrendByCategory')}</CardTitle>
                 <p className="text-sm text-muted-foreground">
-                  Stacked bars: top {TOP_STACKED_SLICES} categories by 6-month spend, plus{' '}
-                  <span className="text-foreground">Other</span>. Hover for a scrollable breakdown.
+                  {t('analytics.expenseTrendDescription', { count: TOP_STACKED_SLICES, other: t('analytics.otherLabel') })}
                 </p>
               </CardHeader>
               <CardContent>
@@ -559,6 +565,7 @@ export default function AnalyticsPage() {
                             label={props.label}
                             series={stackedSeries}
                             currency={currency}
+                            totalLabel={t('analytics.total')}
                           />
                         )}
                       />
@@ -576,7 +583,7 @@ export default function AnalyticsPage() {
                   </ResponsiveContainer>
                 </div>
                 <ScrollArea className="mt-4 max-h-28">
-                  <div className="flex flex-wrap gap-x-4 gap-y-2 pr-2 text-xs text-muted-foreground">
+                  <div className="flex flex-wrap gap-x-4 gap-y-2 pe-2 text-xs text-muted-foreground">
                     {stackedSeries.map((s) => (
                       <span key={s.dataKey} className="inline-flex items-center gap-1.5">
                         <span className="inline-block size-2.5 rounded-sm" style={{ backgroundColor: s.color }} />
@@ -591,18 +598,18 @@ export default function AnalyticsPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="tracking-tight">Top expense categories</CardTitle>
-              <p className="text-sm text-muted-foreground">Total spent in the last 12 months</p>
+              <CardTitle className="tracking-tight">{t('analytics.topExpenseCategories')}</CardTitle>
+              <p className="text-sm text-muted-foreground">{t('analytics.totalSpentLast12')}</p>
             </CardHeader>
             <CardContent className="space-y-4">
               {topExpenseCategories.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No expense data in this period yet.</p>
+                <p className="text-sm text-muted-foreground">{t('analytics.noExpenseData')}</p>
               ) : (
                 topExpenseCategories.map((row, idx) => (
                   <div key={row.id} className="space-y-1.5">
                     <div className="flex items-center justify-between gap-3 text-sm">
                       <span className="truncate font-medium">
-                        <span className="mr-2 tabular-nums text-muted-foreground">{idx + 1}.</span>
+                        <span className="me-2 tabular-nums text-muted-foreground">{idx + 1}.</span>
                         {row.name}
                       </span>
                       <span className="shrink-0 font-amount tabular-nums">{formatCurrency(row.total, currency)}</span>

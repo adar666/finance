@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useMemo, useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { format, parseISO, startOfMonth, endOfMonth, isBefore, isAfter } from 'date-fns'
 import {
   Plus,
@@ -80,20 +81,6 @@ import {
 
 const NONE = '__none__'
 
-const RECURRING_FLOW_SELECT_ITEMS = selectItemsFromMap(['income', 'expense'], {
-  income: 'Income',
-  expense: 'Expense',
-})
-
-const RECURRING_FREQUENCY_SELECT_ITEMS = selectItemsFromMap(
-  ['daily', 'weekly', 'monthly', 'yearly'],
-  {
-    daily: 'Daily',
-    weekly: 'Weekly',
-    monthly: 'Monthly',
-    yearly: 'Yearly',
-  }
-)
 
 type FlowType = 'income' | 'expense'
 
@@ -199,7 +186,29 @@ const defaultRuleForm = (): RuleForm => ({
 })
 
 export default function PlanningPage() {
+  const t = useTranslations()
   const currency = useCurrency()
+
+  const RECURRING_FLOW_SELECT_ITEMS = useMemo(
+    () =>
+      selectItemsFromMap(['income', 'expense'], {
+        income: t('common.income'),
+        expense: t('common.expense'),
+      }),
+    [t]
+  )
+
+  const RECURRING_FREQUENCY_SELECT_ITEMS = useMemo(
+    () =>
+      selectItemsFromMap(['daily', 'weekly', 'monthly', 'yearly'], {
+        daily: t('common.daily'),
+        weekly: t('common.weekly'),
+        monthly: t('common.monthly'),
+        yearly: t('common.yearly'),
+      }),
+    [t]
+  )
+
   const { data: rules = [], isLoading: rulesLoading } = useRecurringRules()
   const { data: accounts = [], isLoading: accountsLoading } = useAccounts()
   const { data: categories = [], isLoading: categoriesLoading } = useCategories()
@@ -327,23 +336,23 @@ export default function PlanningPage() {
   return (
     <div className="pb-24 md:pb-8">
       <PageHeader
-        title="Financial planning"
-        description="Recurring cash flows, projections, and retirement estimates."
+        title={t('planning.title')}
+        description={t('planning.description')}
       />
 
       <Tabs defaultValue="recurring" className="space-y-6">
         <TabsList className="flex flex-wrap h-auto gap-1 p-1">
           <TabsTrigger value="recurring" className="gap-1.5">
             <Repeat className="size-3.5" />
-            Recurring
+            {t('planning.recurring')}
           </TabsTrigger>
           <TabsTrigger value="projections" className="gap-1.5">
             <TrendingUp className="size-3.5" />
-            Projections
+            {t('planning.projections')}
           </TabsTrigger>
           <TabsTrigger value="retirement" className="gap-1.5">
             <Calculator className="size-3.5" />
-            Retirement
+            {t('planning.retirement')}
           </TabsTrigger>
         </TabsList>
 
@@ -351,7 +360,7 @@ export default function PlanningPage() {
           <div className="flex justify-end">
             <Button onClick={openAdd} size="sm" className="gap-1.5">
               <Plus className="size-4" />
-              Add rule
+              {t('planning.addRule')}
             </Button>
           </div>
 
@@ -359,7 +368,7 @@ export default function PlanningPage() {
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
                 <CalendarDays className="size-4 text-muted-foreground" />
-                Recurring transactions
+                {t('planning.recurringTransactions')}
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0 sm:p-6 pt-0">
@@ -374,13 +383,13 @@ export default function PlanningPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Description</TableHead>
-                        <TableHead>Type</TableHead>
-                        <TableHead className="text-right">Amount</TableHead>
-                        <TableHead>Frequency</TableHead>
-                        <TableHead>Account</TableHead>
-                        <TableHead>Next</TableHead>
-                        <TableHead className="w-[100px]">Active</TableHead>
+                        <TableHead>{t('common.description')}</TableHead>
+                        <TableHead>{t('common.type')}</TableHead>
+                        <TableHead className="text-right">{t('common.amount')}</TableHead>
+                        <TableHead>{t('planning.frequency')}</TableHead>
+                        <TableHead>{t('common.account')}</TableHead>
+                        <TableHead>{t('planning.next')}</TableHead>
+                        <TableHead className="w-[100px]">{t('planning.active')}</TableHead>
                         <TableHead className="w-[60px]" />
                       </TableRow>
                     </TableHeader>
@@ -388,7 +397,7 @@ export default function PlanningPage() {
                       {rules.length === 0 ? (
                         <TableRow>
                           <TableCell colSpan={8} className="text-center text-muted-foreground py-10">
-                            No recurring rules yet. Add one to drive projections.
+                            {t('planning.noRulesYet')}
                           </TableCell>
                         </TableRow>
                       ) : (
@@ -401,12 +410,12 @@ export default function PlanningPage() {
                               {rule.type === 'income' ? (
                                 <Badge className="gap-1 bg-emerald-600/15 text-emerald-700 dark:text-emerald-400 border-0">
                                   <ArrowUpCircle className="size-3" />
-                                  Income
+                                  {t('common.income')}
                                 </Badge>
                               ) : rule.type === 'expense' ? (
                                 <Badge className="gap-1 bg-red-600/10 text-red-700 dark:text-red-400 border-0">
                                   <ArrowDownCircle className="size-3" />
-                                  Expense
+                                  {t('common.expense')}
                                 </Badge>
                               ) : (
                                 <Badge variant="secondary">{rule.type}</Badge>
@@ -437,7 +446,7 @@ export default function PlanningPage() {
                                 size="icon-sm"
                                 className="text-destructive hover:text-destructive"
                                 onClick={() => {
-                                  if (!window.confirm('Delete this recurring rule?')) return
+                                  if (!window.confirm(t('planning.deleteRuleConfirm'))) return
                                   deleteRule.mutate(rule.id)
                                 }}
                                 disabled={deleteRule.isPending}
@@ -458,21 +467,21 @@ export default function PlanningPage() {
           <Dialog open={addOpen} onOpenChange={setAddOpen}>
             <DialogContent className="sm:max-w-md" showCloseButton>
               <DialogHeader>
-                <DialogTitle>Add recurring rule</DialogTitle>
+                <DialogTitle>{t('planning.addRecurringRule')}</DialogTitle>
               </DialogHeader>
               <div className="grid gap-3 py-2">
                 <div className="grid gap-2">
-                  <Label htmlFor="rule-desc">Description</Label>
+                  <Label htmlFor="rule-desc">{t('common.description')}</Label>
                   <Input
                     id="rule-desc"
                     value={form.description}
                     onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                    placeholder="Rent, salary…"
+                    placeholder={t('planning.descriptionPlaceholder')}
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="grid gap-2">
-                    <Label>Type</Label>
+                    <Label>{t('common.type')}</Label>
                     <Select
                       value={form.type}
                       onValueChange={(v) => setForm((f) => ({ ...f, type: v as FlowType }))}
@@ -482,13 +491,13 @@ export default function PlanningPage() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="income">Income</SelectItem>
-                        <SelectItem value="expense">Expense</SelectItem>
+                        <SelectItem value="income">{t('common.income')}</SelectItem>
+                        <SelectItem value="expense">{t('common.expense')}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="rule-amt">Amount</Label>
+                    <Label htmlFor="rule-amt">{t('common.amount')}</Label>
                     <Input
                       id="rule-amt"
                       type="number"
@@ -500,7 +509,7 @@ export default function PlanningPage() {
                   </div>
                 </div>
                 <div className="grid gap-2">
-                  <Label>Frequency</Label>
+                  <Label>{t('planning.frequency')}</Label>
                   <Select
                     value={form.frequency}
                     onValueChange={(v) =>
@@ -512,16 +521,16 @@ export default function PlanningPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="daily">Daily</SelectItem>
-                      <SelectItem value="weekly">Weekly</SelectItem>
-                      <SelectItem value="monthly">Monthly</SelectItem>
-                      <SelectItem value="yearly">Yearly</SelectItem>
+                      <SelectItem value="daily">{t('common.daily')}</SelectItem>
+                      <SelectItem value="weekly">{t('common.weekly')}</SelectItem>
+                      <SelectItem value="monthly">{t('common.monthly')}</SelectItem>
+                      <SelectItem value="yearly">{t('common.yearly')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 {form.frequency === 'monthly' && (
                   <div className="grid gap-2">
-                    <Label htmlFor="rule-dom">Day of month</Label>
+                    <Label htmlFor="rule-dom">{t('planning.dayOfMonth')}</Label>
                     <Input
                       id="rule-dom"
                       type="number"
@@ -533,14 +542,14 @@ export default function PlanningPage() {
                   </div>
                 )}
                 <div className="grid gap-2">
-                  <Label>Account</Label>
+                  <Label>{t('common.account')}</Label>
                   <Select
                     value={form.account_id || null}
                     onValueChange={(v) => setForm((f) => ({ ...f, account_id: v ?? '' }))}
                     items={recurringAccountItems}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select account" />
+                      <SelectValue placeholder={t('transactions.selectAccount')} />
                     </SelectTrigger>
                     <SelectContent>
                       {accounts.map((a) => (
@@ -552,17 +561,17 @@ export default function PlanningPage() {
                   </Select>
                 </div>
                 <div className="grid gap-2">
-                  <Label>Category</Label>
+                  <Label>{t('common.category')}</Label>
                   <Select
                     value={form.category_id}
                     onValueChange={(v) => setForm((f) => ({ ...f, category_id: v ?? NONE }))}
                     items={recurringCategoryItems}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Optional" />
+                      <SelectValue placeholder={t('common.optional')} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value={NONE}>None</SelectItem>
+                      <SelectItem value={NONE}>{t('common.none')}</SelectItem>
                       {categoriesByType(form.type).map((c) => (
                         <SelectItem key={c.id} value={c.id}>
                           {c.name}
@@ -572,7 +581,7 @@ export default function PlanningPage() {
                   </Select>
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="rule-start">Start date</Label>
+                  <Label htmlFor="rule-start">{t('planning.startDate')}</Label>
                   <Input
                     id="rule-start"
                     type="date"
@@ -583,7 +592,7 @@ export default function PlanningPage() {
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setAddOpen(false)}>
-                  Cancel
+                  {t('common.cancel')}
                 </Button>
                 <Button
                   onClick={submitRule}
@@ -594,7 +603,7 @@ export default function PlanningPage() {
                     !(Number(form.amount) > 0)
                   }
                 >
-                  Save rule
+                  {t('planning.saveRule')}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -604,9 +613,9 @@ export default function PlanningPage() {
         <TabsContent value="projections" className="space-y-6">
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base">Cumulative balance (projected)</CardTitle>
+              <CardTitle className="text-base">{t('planning.cumulativeBalance')}</CardTitle>
               <p className="text-sm text-muted-foreground">
-                Starts from current account balances, then adds projected net cash flow each month.
+                {t('planning.cumulativeHint')}
               </p>
             </CardHeader>
             <CardContent>
@@ -623,7 +632,7 @@ export default function PlanningPage() {
                     <RTooltip
                       formatter={(value) => {
                         const n = typeof value === 'number' ? value : Number(value ?? 0)
-                        return [formatCurrency(Number.isFinite(n) ? n : 0, currency), 'Cumulative']
+                        return [formatCurrency(Number.isFinite(n) ? n : 0, currency), t('planning.cumulative')]
                       }}
                       contentStyle={{ borderRadius: '0.5rem', border: '1px solid var(--border)', backgroundColor: 'var(--card)', color: 'var(--card-foreground)' }}
                     />
@@ -645,10 +654,10 @@ export default function PlanningPage() {
 
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">What if</CardTitle>
+              <CardTitle className="text-base">{t('planning.whatIf')}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              <Label htmlFor="extra-save">Additional monthly savings (added to net each month)</Label>
+              <Label htmlFor="extra-save">{t('planning.additionalSavings')}</Label>
               <Input
                 id="extra-save"
                 type="number"
@@ -662,18 +671,18 @@ export default function PlanningPage() {
 
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">Month-by-month</CardTitle>
+              <CardTitle className="text-base">{t('planning.monthByMonth')}</CardTitle>
             </CardHeader>
             <CardContent className="p-0 sm:p-6 pt-0">
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Month</TableHead>
-                      <TableHead className="text-right">Income</TableHead>
-                      <TableHead className="text-right">Expenses</TableHead>
-                      <TableHead className="text-right">Net</TableHead>
-                      <TableHead className="text-right">Cumulative</TableHead>
+                      <TableHead>{t('planning.month')}</TableHead>
+                      <TableHead className="text-right">{t('common.income')}</TableHead>
+                      <TableHead className="text-right">{t('common.expense')}</TableHead>
+                      <TableHead className="text-right">{t('transactions.net')}</TableHead>
+                      <TableHead className="text-right">{t('planning.cumulative')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -710,7 +719,7 @@ export default function PlanningPage() {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Current savings</CardTitle>
+                <CardTitle className="text-sm font-medium text-muted-foreground">{t('planning.currentSavings')}</CardTitle>
               </CardHeader>
               <CardContent>
                 <Input
@@ -723,7 +732,7 @@ export default function PlanningPage() {
             </Card>
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Monthly contribution</CardTitle>
+                <CardTitle className="text-sm font-medium text-muted-foreground">{t('planning.monthlyContribution')}</CardTitle>
               </CardHeader>
               <CardContent>
                 <Input
@@ -736,7 +745,7 @@ export default function PlanningPage() {
             </Card>
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Expected annual return (%)</CardTitle>
+                <CardTitle className="text-sm font-medium text-muted-foreground">{t('planning.expectedReturn')}</CardTitle>
               </CardHeader>
               <CardContent>
                 <Input
@@ -749,7 +758,7 @@ export default function PlanningPage() {
             </Card>
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Years until retirement</CardTitle>
+                <CardTitle className="text-sm font-medium text-muted-foreground">{t('planning.yearsUntilRetirement')}</CardTitle>
               </CardHeader>
               <CardContent>
                 <Input
@@ -766,7 +775,7 @@ export default function PlanningPage() {
           <div className="grid gap-4 sm:grid-cols-3">
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm text-muted-foreground">Projected amount</CardTitle>
+                <CardTitle className="text-sm text-muted-foreground">{t('planning.projectedAmount')}</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-2xl font-bold tabular-nums">
@@ -776,7 +785,7 @@ export default function PlanningPage() {
             </Card>
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm text-muted-foreground">Total contributions</CardTitle>
+                <CardTitle className="text-sm text-muted-foreground">{t('planning.totalContributions')}</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-2xl font-bold tabular-nums">
@@ -786,7 +795,7 @@ export default function PlanningPage() {
             </Card>
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm text-muted-foreground">Total interest (est.)</CardTitle>
+                <CardTitle className="text-sm text-muted-foreground">{t('planning.totalInterest')}</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-2xl font-bold tabular-nums text-primary">
@@ -798,8 +807,8 @@ export default function PlanningPage() {
 
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base">Growth over time</CardTitle>
-              <p className="text-sm text-muted-foreground">End-of-year balance (yearly steps)</p>
+              <CardTitle className="text-base">{t('planning.growthOverTime')}</CardTitle>
+              <p className="text-sm text-muted-foreground">{t('planning.growthHint')}</p>
             </CardHeader>
             <CardContent>
               <div className="h-[300px] w-full min-w-0">
@@ -815,7 +824,7 @@ export default function PlanningPage() {
                     <RTooltip
                       formatter={(value) => {
                         const n = typeof value === 'number' ? value : Number(value ?? 0)
-                        return [formatCurrency(Number.isFinite(n) ? n : 0, currency), 'Balance']
+                        return [formatCurrency(Number.isFinite(n) ? n : 0, currency), t('planning.balance')]
                       }}
                       contentStyle={{ borderRadius: '0.5rem', border: '1px solid var(--border)', backgroundColor: 'var(--card)', color: 'var(--card-foreground)' }}
                     />

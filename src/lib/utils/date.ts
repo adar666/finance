@@ -12,18 +12,28 @@ import {
   differenceInMonths,
   differenceInDays,
 } from 'date-fns'
+import { he } from 'date-fns/locale/he'
+import type { Locale as DateFnsLocale } from 'date-fns'
 
-export function formatDate(date: string | Date, fmt: string = 'MMM d, yyyy'): string {
+const DATE_LOCALE_MAP: Record<string, DateFnsLocale> = { he }
+
+function resolveDateLocale(locale?: string): DateFnsLocale | undefined {
+  if (!locale) return undefined
+  return DATE_LOCALE_MAP[locale]
+}
+
+export function formatDate(date: string | Date, fmt: string = 'MMM d, yyyy', locale?: string): string {
   const d = typeof date === 'string' ? parseISO(date) : date
-  return format(d, fmt)
+  const opts = resolveDateLocale(locale)
+  return format(d, fmt, opts ? { locale: opts } : undefined)
 }
 
-export function formatShortDate(date: string | Date): string {
-  return formatDate(date, 'MMM d')
+export function formatShortDate(date: string | Date, locale?: string): string {
+  return formatDate(date, 'MMM d', locale)
 }
 
-export function formatMonthYear(date: string | Date): string {
-  return formatDate(date, 'MMMM yyyy')
+export function formatMonthYear(date: string | Date, locale?: string): string {
+  return formatDate(date, 'MMMM yyyy', locale)
 }
 
 export function getCurrentMonthRange() {

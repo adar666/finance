@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState, useCallback, type FormEvent } from 'react'
+import { useTranslations } from 'next-intl'
 import {
   Plus,
   Target,
@@ -176,10 +177,12 @@ function SavingsSummary({
   totalSaved,
   totalTarget,
   currency,
+  t,
 }: {
   totalSaved: number
   totalTarget: number
   currency: string
+  t: ReturnType<typeof useTranslations>
 }) {
   const overallPct = totalTarget > 0 ? (totalSaved / totalTarget) * 100 : 0
   const barValue = Math.min(100, Math.max(0, overallPct))
@@ -188,25 +191,25 @@ function SavingsSummary({
     <Card className="border-primary/20 bg-gradient-to-br from-primary/5 via-background to-background shadow-sm">
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">
-          All goals
+          {t('savings.allGoals')}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-3">
           <div>
-            <p className="text-xs text-muted-foreground">Total saved</p>
+            <p className="text-xs text-muted-foreground">{t('savings.totalSaved')}</p>
             <p className="text-2xl font-bold tabular-nums tracking-tight text-emerald-600 dark:text-emerald-400">
               {formatCurrency(totalSaved, currency)}
             </p>
           </div>
           <div>
-            <p className="text-xs text-muted-foreground">Total target</p>
+            <p className="text-xs text-muted-foreground">{t('savings.totalTarget')}</p>
             <p className="text-2xl font-bold tabular-nums tracking-tight">
               {formatCurrency(totalTarget, currency)}
             </p>
           </div>
           <div>
-            <p className="text-xs text-muted-foreground">Overall progress</p>
+            <p className="text-xs text-muted-foreground">{t('savings.overallProgress')}</p>
             <p className="text-2xl font-bold tabular-nums tracking-tight">
               {overallPct.toFixed(1)}%
             </p>
@@ -221,27 +224,29 @@ function SavingsSummary({
 function GoalFormFields({
   form,
   onChange,
+  t,
 }: {
   form: GoalFormState
   onChange: (next: GoalFormState) => void
+  t: ReturnType<typeof useTranslations>
 }) {
   const colorValue = normalizeColor(form.color)
 
   return (
     <div className="grid gap-4 py-2">
       <div className="grid gap-2">
-        <Label htmlFor="goal-name">Name</Label>
+        <Label htmlFor="goal-name">{t('savings.goalName')}</Label>
         <Input
           id="goal-name"
           value={form.name}
           onChange={(e) => onChange({ ...form, name: e.target.value })}
-          placeholder="e.g. Emergency fund"
+          placeholder={t('savings.goalNamePlaceholder')}
           autoComplete="off"
         />
       </div>
       <div className="grid gap-2 sm:grid-cols-2 sm:gap-4">
         <div className="grid gap-2">
-          <Label htmlFor="goal-target">Target amount</Label>
+          <Label htmlFor="goal-target">{t('savings.targetAmount')}</Label>
           <Input
             id="goal-target"
             type="number"
@@ -253,7 +258,7 @@ function GoalFormFields({
           />
         </div>
         <div className="grid gap-2">
-          <Label htmlFor="goal-current">Current amount</Label>
+          <Label htmlFor="goal-current">{t('savings.currentAmount')}</Label>
           <Input
             id="goal-current"
             type="number"
@@ -266,7 +271,7 @@ function GoalFormFields({
         </div>
       </div>
       <div className="grid gap-2">
-        <Label htmlFor="goal-target-date">Target date (optional)</Label>
+        <Label htmlFor="goal-target-date">{t('savings.targetDate')}</Label>
         <Input
           id="goal-target-date"
           type="date"
@@ -275,7 +280,7 @@ function GoalFormFields({
         />
       </div>
       <div className="grid gap-2">
-        <Label htmlFor="goal-color">Color</Label>
+        <Label htmlFor="goal-color">{t('common.color')}</Label>
         <div className="flex flex-wrap items-center gap-2">
           <Input
             id="goal-color"
@@ -318,6 +323,7 @@ function GoalCard({
   onDelete,
   onContribute,
   onWithdraw,
+  t,
 }: {
   goal: SavingsGoal
   currency: string
@@ -325,6 +331,7 @@ function GoalCard({
   onDelete: (g: SavingsGoal) => void
   onContribute: (g: SavingsGoal) => void
   onWithdraw: (g: SavingsGoal) => void
+  t: ReturnType<typeof useTranslations>
 }) {
   const accent = goal.color?.trim() ? normalizeColor(goal.color) : DEFAULT_COLOR
   const pct = goalProgressPercent(goal)
@@ -338,12 +345,12 @@ function GoalCard({
       )}
     >
       <div
-        className="absolute left-0 top-0 h-full w-1 rounded-l-xl"
+        className="absolute start-0 top-0 h-full w-1 rounded-s-xl"
         style={{ backgroundColor: accent }}
         aria-hidden
       />
-      <CardHeader className="flex flex-row items-start justify-between gap-2 space-y-0 pb-3 pl-5">
-        <div className="min-w-0 flex-1 pr-2">
+      <CardHeader className="flex flex-row items-start justify-between gap-2 space-y-0 pb-3 ps-5">
+        <div className="min-w-0 flex-1 pe-2">
           <CardTitle className="text-base font-semibold leading-tight">
             {goal.name}
           </CardTitle>
@@ -351,13 +358,13 @@ function GoalCard({
             <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
               <span className="inline-flex items-center gap-1">
                 <Calendar className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                Target {formatDate(goal.target_date)}
+                {t('savings.target', { date: formatDate(goal.target_date) })}
               </span>
               {projection.daysToTarget !== null && (
                 <Badge variant="secondary" className="font-normal tabular-nums">
                   {projection.daysToTarget >= 0
-                    ? `${projection.daysToTarget}d left`
-                    : `${Math.abs(projection.daysToTarget)}d overdue`}
+                    ? t('savings.daysLeft', { days: projection.daysToTarget })
+                    : t('savings.daysOverdue', { days: Math.abs(projection.daysToTarget) })}
                 </Badge>
               )}
             </div>
@@ -386,7 +393,7 @@ function GoalCard({
           </Button>
         </div>
       </CardHeader>
-      <CardContent className="space-y-4 pl-5">
+      <CardContent className="space-y-4 ps-5">
         <div className="flex items-center gap-5">
           <div className="relative grid place-items-center">
             <ProgressRing percentage={ringPct} color={accent} />
@@ -408,11 +415,11 @@ function GoalCard({
                 <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
                   <TrendingUp className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
                   <span>
-                    ~{formatCurrency(projection.avgMonthlySaved, currency)}/mo avg. saved
+                    {t('savings.avgMonthlySaved', { amount: formatCurrency(projection.avgMonthlySaved, currency) })}
                     {projection.projectedDate && (
                       <>
                         {' '}
-                        · at this pace:{' '}
+                        · {t('savings.atThisPace')}{' '}
                         <span className="font-medium text-foreground">
                           {formatDate(projection.projectedDate)}
                         </span>
@@ -433,7 +440,7 @@ function GoalCard({
             onClick={() => onContribute(goal)}
           >
             <Plus className="h-3.5 w-3.5" />
-            Contribute
+            {t('savings.contribute')}
           </Button>
           <Button
             type="button"
@@ -444,7 +451,7 @@ function GoalCard({
             disabled={goal.current_amount <= 0}
           >
             <Minus className="h-3.5 w-3.5" />
-            Withdraw
+            {t('savings.withdraw')}
           </Button>
         </div>
       </CardContent>
@@ -453,6 +460,7 @@ function GoalCard({
 }
 
 export default function SavingsPage() {
+  const t = useTranslations()
   const currency = useCurrency()
   const { data: goals = [], isPending, isError, error } = useSavingsGoals()
   const createMut = useCreateSavingsGoal()
@@ -603,8 +611,8 @@ export default function SavingsPage() {
     return (
       <>
         <PageHeader
-          title="Savings goals"
-          description="Track targets, contributions, and projected completion"
+          title={t('savings.title')}
+          description={t('savings.description')}
         />
         <SavingsPageSkeleton />
       </>
@@ -615,13 +623,13 @@ export default function SavingsPage() {
     return (
       <>
         <PageHeader
-          title="Savings goals"
-          description="Track targets, contributions, and projected completion"
+          title={t('savings.title')}
+          description={t('savings.description')}
         />
         <Card className="border-destructive/30 bg-destructive/5">
           <CardContent className="pt-6">
             <p className="text-sm text-destructive">
-              {error instanceof Error ? error.message : 'Could not load savings goals.'}
+              {error instanceof Error ? error.message : t('savings.couldNotLoad')}
             </p>
           </CardContent>
         </Card>
@@ -634,8 +642,8 @@ export default function SavingsPage() {
   return (
     <>
       <PageHeader
-        title="Savings goals"
-        description="Track targets, contributions, and projected completion"
+        title={t('savings.title')}
+        description={t('savings.description')}
       >
         <Dialog
           open={addOpen}
@@ -648,19 +656,19 @@ export default function SavingsPage() {
             render={
               <Button type="button" size="sm" className="gap-1.5">
                 <Plus className="h-4 w-4" />
-                Add goal
+                {t('savings.addGoal')}
               </Button>
             }
           />
           <DialogContent className="sm:max-w-md" showCloseButton>
             <form onSubmit={handleCreate}>
               <DialogHeader>
-                <DialogTitle>Add savings goal</DialogTitle>
+                <DialogTitle>{t('savings.addSavingsGoal')}</DialogTitle>
                 <DialogDescription>
-                  Set a target and optional deadline. You can contribute or withdraw anytime.
+                  {t('savings.addDescription')}
                 </DialogDescription>
               </DialogHeader>
-              <GoalFormFields form={addForm} onChange={setAddForm} />
+              <GoalFormFields form={addForm} onChange={setAddForm} t={t} />
               <DialogFooter className="border-0 bg-transparent p-0 pt-2 sm:justify-end">
                 <Button
                   type="button"
@@ -668,7 +676,7 @@ export default function SavingsPage() {
                   onClick={() => setAddOpen(false)}
                   disabled={createMut.isPending}
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </Button>
                 <Button
                   type="submit"
@@ -678,7 +686,7 @@ export default function SavingsPage() {
                     parseAmount(addForm.target_amount) <= 0
                   }
                 >
-                  {createMut.isPending ? 'Saving…' : 'Create goal'}
+                  {createMut.isPending ? t('common.saving') : t('savings.createGoal')}
                 </Button>
               </DialogFooter>
             </form>
@@ -691,6 +699,7 @@ export default function SavingsPage() {
           totalSaved={totals.totalSaved}
           totalTarget={totals.totalTarget}
           currency={currency}
+          t={t}
         />
       )}
 
@@ -701,9 +710,9 @@ export default function SavingsPage() {
               <Target className="h-7 w-7 text-muted-foreground" />
             </div>
             <div className="max-w-sm space-y-1">
-              <p className="font-medium">No savings goals yet</p>
+              <p className="font-medium">{t('savings.noGoals')}</p>
               <p className="text-sm text-muted-foreground">
-                Create a goal to visualize progress, set deadlines, and log contributions.
+                {t('savings.noGoalsHint')}
               </p>
             </div>
             <Button
@@ -714,7 +723,7 @@ export default function SavingsPage() {
               }}
             >
               <Plus className="h-4 w-4" />
-              Add goal
+              {t('savings.addGoal')}
             </Button>
           </CardContent>
         </Card>
@@ -729,6 +738,7 @@ export default function SavingsPage() {
               onDelete={openDelete}
               onContribute={(g) => openAdjust(g, 'contribute')}
               onWithdraw={(g) => openAdjust(g, 'withdraw')}
+              t={t}
             />
           ))}
         </div>
@@ -744,12 +754,12 @@ export default function SavingsPage() {
         <DialogContent className="sm:max-w-md" showCloseButton>
           <form onSubmit={handleUpdate}>
             <DialogHeader>
-              <DialogTitle>Edit goal</DialogTitle>
+              <DialogTitle>{t('savings.editGoal')}</DialogTitle>
               <DialogDescription>
-                Update amounts, deadline, or appearance for {editing?.name ?? 'this goal'}.
+                {t('savings.editDescription', { name: editing?.name ?? '' })}
               </DialogDescription>
             </DialogHeader>
-            <GoalFormFields form={editForm} onChange={setEditForm} />
+            <GoalFormFields form={editForm} onChange={setEditForm} t={t} />
             <DialogFooter className="border-0 bg-transparent p-0 pt-2 sm:justify-end">
               <Button
                 type="button"
@@ -757,7 +767,7 @@ export default function SavingsPage() {
                 onClick={() => setEditOpen(false)}
                 disabled={updateMut.isPending}
               >
-                Cancel
+                {t('common.cancel')}
               </Button>
               <Button
                 type="submit"
@@ -767,7 +777,7 @@ export default function SavingsPage() {
                   parseAmount(editForm.target_amount) <= 0
                 }
               >
-                {updateMut.isPending ? 'Saving…' : 'Save changes'}
+                {updateMut.isPending ? t('common.saving') : t('common.saveChanges')}
               </Button>
             </DialogFooter>
           </form>
@@ -783,11 +793,9 @@ export default function SavingsPage() {
       >
         <DialogContent className="sm:max-w-sm" showCloseButton>
           <DialogHeader>
-            <DialogTitle>Delete goal?</DialogTitle>
+            <DialogTitle>{t('savings.deleteGoalTitle')}</DialogTitle>
             <DialogDescription>
-              This will permanently remove{' '}
-              <span className="font-medium text-foreground">{deleting?.name}</span>. This
-              cannot be undone.
+              {t('savings.deleteGoalMessage', { name: deleting?.name ?? '' })}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="border-0 bg-transparent p-0 pt-2 sm:justify-end">
@@ -797,7 +805,7 @@ export default function SavingsPage() {
               onClick={() => setDeleteOpen(false)}
               disabled={deleteMut.isPending}
             >
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button
               type="button"
@@ -805,7 +813,7 @@ export default function SavingsPage() {
               onClick={handleDeleteConfirm}
               disabled={deleteMut.isPending}
             >
-              {deleteMut.isPending ? 'Deleting…' : 'Delete'}
+              {deleteMut.isPending ? t('common.deleting') : t('common.delete')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -825,14 +833,14 @@ export default function SavingsPage() {
           <form onSubmit={handleAdjustSubmit}>
             <DialogHeader>
               <DialogTitle>
-                {adjustMode === 'contribute' ? 'Contribute' : 'Withdraw'}
+                {adjustMode === 'contribute' ? t('savings.contribute') : t('savings.withdraw')}
               </DialogTitle>
               <DialogDescription>
                 {adjustGoal?.name ? (
                   <>
-                    {adjustMode === 'contribute' ? 'Add to' : 'Subtract from'}{' '}
+                    {adjustMode === 'contribute' ? t('savings.addTo') : t('savings.subtractFrom')}{' '}
                     <span className="font-medium text-foreground">{adjustGoal.name}</span>.
-                    Current balance:{' '}
+                    {t('savings.currentBalance')}{' '}
                     <span className="tabular-nums">
                       {adjustGoal
                         ? formatCurrency(adjustGoal.current_amount, currency)
@@ -844,7 +852,7 @@ export default function SavingsPage() {
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-2 py-2">
-              <Label htmlFor="adjust-amount">Amount ({currency})</Label>
+              <Label htmlFor="adjust-amount">{t('budgets.amountLabel', { currency })}</Label>
               <Input
                 id="adjust-amount"
                 type="number"
@@ -858,7 +866,7 @@ export default function SavingsPage() {
               />
               {adjustMode === 'withdraw' && adjustGoal && (
                 <p className="text-xs text-muted-foreground">
-                  Withdraws cannot exceed your current balance.
+                  {t('savings.withdrawLimit')}
                 </p>
               )}
             </div>
@@ -869,7 +877,7 @@ export default function SavingsPage() {
                 onClick={() => setAdjustOpen(false)}
                 disabled={updateMut.isPending}
               >
-                Cancel
+                {t('common.cancel')}
               </Button>
               <Button
                 type="submit"
@@ -882,10 +890,10 @@ export default function SavingsPage() {
                 }
               >
                 {updateMut.isPending
-                  ? 'Updating…'
+                  ? t('savings.updating')
                   : adjustMode === 'contribute'
-                    ? 'Add'
-                    : 'Withdraw'}
+                    ? t('common.add')
+                    : t('savings.withdraw')}
               </Button>
             </DialogFooter>
           </form>

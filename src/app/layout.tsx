@@ -1,15 +1,25 @@
 import type { Metadata } from 'next'
 import { headers } from 'next/headers'
-import { Plus_Jakarta_Sans, JetBrains_Mono } from 'next/font/google'
+import { Plus_Jakarta_Sans, Heebo, JetBrains_Mono } from 'next/font/google'
+import { NextIntlClientProvider } from 'next-intl'
+import { getLocale, getMessages } from 'next-intl/server'
 import { StagingBannerBar } from '@/components/layout/staging-banner'
 import { Providers } from '@/components/providers'
 import { cn } from '@/lib/utils'
 import { isStagingFinanceHost } from '@/lib/utils/staging-host'
+import { rtlLocales } from '@/i18n/config'
 import './globals.css'
 
 const sans = Plus_Jakarta_Sans({
   subsets: ['latin'],
   variable: '--font-sans-ui',
+  display: 'swap',
+  weight: ['400', '500', '600', '700'],
+})
+
+const heebo = Heebo({
+  subsets: ['hebrew', 'latin'],
+  variable: '--font-hebrew-ui',
   display: 'swap',
   weight: ['400', '500', '600', '700'],
 })
@@ -38,18 +48,25 @@ export default async function RootLayout({
   const host = h.get('x-forwarded-host') ?? h.get('host') ?? ''
   const showStagingBanner = isStagingFinanceHost(host)
 
+  const locale = await getLocale()
+  const messages = await getMessages()
+  const isRtl = rtlLocales.has(locale)
+  const fontVar = isRtl ? heebo.variable : sans.variable
+
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang={locale} dir={isRtl ? 'rtl' : 'ltr'} suppressHydrationWarning>
       <body
         className={cn(
-          sans.variable,
+          fontVar,
           mono.variable,
           'font-sans min-h-screen antialiased',
           showStagingBanner && 'pt-12'
         )}
       >
         {showStagingBanner ? <StagingBannerBar /> : null}
-        <Providers>{children}</Providers>
+        <NextIntlClientProvider messages={messages}>
+          <Providers>{children}</Providers>
+        </NextIntlClientProvider>
       </body>
     </html>
   )
