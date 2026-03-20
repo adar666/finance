@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, startTransition } from 'react'
 import { format, isValid, parseISO } from 'date-fns'
 import {
   Plus,
@@ -530,10 +530,13 @@ export default function TransactionsPage() {
   const canProceedStep1Csv = Boolean(csvFile && csvRows.length > 0 && csvParseErrors.length === 0)
   const canProceedStep1Pdf = Boolean(csvFile && pdfTransactions.length > 0 && !pdfParsing)
 
-  function openDeleteConfirm(id: string) {
-    setPendingDeleteId(id)
-    setDeleteConfirmOpen(true)
-  }
+  const openDeleteConfirm = useCallback((id: string) => {
+    // Defer dialog + full table re-render so the click yields quickly (better INP than sync setState).
+    startTransition(() => {
+      setPendingDeleteId(id)
+      setDeleteConfirmOpen(true)
+    })
+  }, [])
 
   function closeDeleteConfirm() {
     setDeleteConfirmOpen(false)
