@@ -26,6 +26,7 @@ import {
   useUpdateInvestment,
   useDeleteInvestment,
 } from '@/lib/hooks/use-investments'
+import { useCurrency } from '@/lib/hooks/use-currency'
 import type { Investment, InvestmentType } from '@/types/database'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -102,11 +103,11 @@ function portfolioPercent(totalValue: number, totalCost: number): number | null 
 
 type CurrencyRollup = { currency: string; value: number; cost: number }
 
-function rollupByCurrency(investments: Investment[]): CurrencyRollup[] {
+function rollupByCurrency(investments: Investment[], defaultCurrency: string): CurrencyRollup[] {
   const map = new Map<string, { value: number; cost: number }>()
   for (const inv of investments) {
     const v = positionValue(inv)
-    const cur = inv.currency || 'USD'
+    const cur = inv.currency || defaultCurrency
     const prev = map.get(cur) ?? { value: 0, cost: 0 }
     map.set(cur, {
       value: prev.value + v,
@@ -389,6 +390,7 @@ function InvestmentFormFields({
 }
 
 export default function InvestmentsPage() {
+  const currency = useCurrency()
   const { data: investments = [], isPending, isError, error } = useInvestments()
   const createMut = useCreateInvestment()
   const updateMut = useUpdateInvestment()
@@ -402,23 +404,26 @@ export default function InvestmentsPage() {
   const [addForm, setAddForm] = useState<InvestmentFormState>(DEFAULT_FORM)
   const [editForm, setEditForm] = useState<InvestmentFormState>(DEFAULT_FORM)
 
-  const rollups = useMemo(() => rollupByCurrency(investments), [investments])
+  const rollups = useMemo(
+    () => rollupByCurrency(investments, currency),
+    [investments, currency]
+  )
 
   const pieData: PieDatum[] = useMemo(() => {
     return investments
       .map((inv, i) => ({
         name: inv.symbol.trim() || inv.name,
         value: positionValue(inv),
-        currency: inv.currency || 'USD',
+        currency: inv.currency || currency,
         fill: CHART_COLORS[i % CHART_COLORS.length],
       }))
       .filter((d) => d.value > 0)
-  }, [investments])
+  }, [investments, currency])
 
   const mixedCurrencies = useMemo(() => {
-    const set = new Set(investments.map((i) => i.currency || 'USD'))
+    const set = new Set(investments.map((i) => i.currency || currency))
     return set.size > 1
-  }, [investments])
+  }, [investments, currency])
 
   const resetAddForm = useCallback(() => setAddForm(DEFAULT_FORM), [])
 
@@ -673,7 +678,7 @@ export default function InvestmentsPage() {
                     <RTooltip
                       formatter={(value, _name, item) => {
                         const payload = item?.payload as PieDatum | undefined
-                        const cur = payload?.currency ?? 'USD'
+                        const cur = payload?.currency ?? currency
                         if (value === undefined || value === null) {
                           return ['—', 'Value']
                         }

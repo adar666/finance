@@ -12,7 +12,10 @@ interface TransactionFilters {
   startDate?: string
   endDate?: string
   search?: string
+  minAmount?: number
+  maxAmount?: number
   limit?: number
+  offset?: number
 }
 
 export function useTransactions(filters: TransactionFilters = {}) {
@@ -25,14 +28,18 @@ export function useTransactions(filters: TransactionFilters = {}) {
         .from('transactions')
         .select('*, account:accounts(*), category:categories(*)')
         .order('date', { ascending: false })
+        .order('created_at', { ascending: false })
 
       if (filters.accountId) query = query.eq('account_id', filters.accountId)
       if (filters.categoryId) query = query.eq('category_id', filters.categoryId)
       if (filters.type) query = query.eq('type', filters.type)
       if (filters.startDate) query = query.gte('date', filters.startDate)
       if (filters.endDate) query = query.lte('date', filters.endDate)
+      if (filters.minAmount !== undefined) query = query.gte('amount', filters.minAmount)
+      if (filters.maxAmount !== undefined) query = query.lte('amount', filters.maxAmount)
       if (filters.search) query = query.ilike('description', `%${filters.search}%`)
       if (filters.limit) query = query.limit(filters.limit)
+      if (filters.offset) query = query.range(filters.offset, filters.offset + (filters.limit || 50) - 1)
 
       const { data, error } = await query
       if (error) throw error
@@ -57,19 +64,6 @@ export function useCreateTransaction() {
         .select()
         .single()
       if (error) throw error
-
-      // Update account balance
-      const multiplier = tx.type === 'income' ? 1 : -1
-      await supabase.rpc('update_account_balance', {
-        p_account_id: tx.account_id,
-        p_amount: tx.amount * multiplier,
-      }).then(({ error }) => {
-        if (error) {
-          // Fallback: manually adjust
-          console.warn('RPC not available, skipping auto-balance update')
-        }
-      })
-
       return data as Transaction
     },
     onSuccess: () => {

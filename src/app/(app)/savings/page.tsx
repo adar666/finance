@@ -23,6 +23,7 @@ import {
   useUpdateSavingsGoal,
   useDeleteSavingsGoal,
 } from '@/lib/hooks/use-savings'
+import { useCurrency } from '@/lib/hooks/use-currency'
 import type { SavingsGoal } from '@/types/database'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -42,7 +43,6 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 
-const CURRENCY = 'ILS' as const
 const DEFAULT_COLOR = '#10b981'
 const DEFAULT_ICON = 'target'
 
@@ -175,9 +175,11 @@ function computeProjection(goal: SavingsGoal): ProjectionInfo {
 function SavingsSummary({
   totalSaved,
   totalTarget,
+  currency,
 }: {
   totalSaved: number
   totalTarget: number
+  currency: string
 }) {
   const overallPct = totalTarget > 0 ? (totalSaved / totalTarget) * 100 : 0
   const barValue = Math.min(100, Math.max(0, overallPct))
@@ -194,13 +196,13 @@ function SavingsSummary({
           <div>
             <p className="text-xs text-muted-foreground">Total saved</p>
             <p className="text-2xl font-bold tabular-nums tracking-tight text-emerald-600 dark:text-emerald-400">
-              {formatCurrency(totalSaved, CURRENCY)}
+              {formatCurrency(totalSaved, currency)}
             </p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Total target</p>
             <p className="text-2xl font-bold tabular-nums tracking-tight">
-              {formatCurrency(totalTarget, CURRENCY)}
+              {formatCurrency(totalTarget, currency)}
             </p>
           </div>
           <div>
@@ -311,12 +313,14 @@ function SavingsPageSkeleton() {
 
 function GoalCard({
   goal,
+  currency,
   onEdit,
   onDelete,
   onContribute,
   onWithdraw,
 }: {
   goal: SavingsGoal
+  currency: string
   onEdit: (g: SavingsGoal) => void
   onDelete: (g: SavingsGoal) => void
   onContribute: (g: SavingsGoal) => void
@@ -392,10 +396,10 @@ function GoalCard({
           </div>
           <div className="min-w-0 flex-1 space-y-1">
             <p className="text-lg font-semibold tabular-nums leading-tight">
-              {formatCurrency(goal.current_amount, CURRENCY)}
+              {formatCurrency(goal.current_amount, currency)}
               <span className="text-sm font-normal text-muted-foreground">
                 {' '}
-                / {formatCurrency(goal.target_amount, CURRENCY)}
+                / {formatCurrency(goal.target_amount, currency)}
               </span>
             </p>
             {goal.target_date &&
@@ -404,7 +408,7 @@ function GoalCard({
                 <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
                   <TrendingUp className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
                   <span>
-                    ~{formatCurrency(projection.avgMonthlySaved, CURRENCY)}/mo avg. saved
+                    ~{formatCurrency(projection.avgMonthlySaved, currency)}/mo avg. saved
                     {projection.projectedDate && (
                       <>
                         {' '}
@@ -449,6 +453,7 @@ function GoalCard({
 }
 
 export default function SavingsPage() {
+  const currency = useCurrency()
   const { data: goals = [], isPending, isError, error } = useSavingsGoals()
   const createMut = useCreateSavingsGoal()
   const updateMut = useUpdateSavingsGoal()
@@ -685,6 +690,7 @@ export default function SavingsPage() {
         <SavingsSummary
           totalSaved={totals.totalSaved}
           totalTarget={totals.totalTarget}
+          currency={currency}
         />
       )}
 
@@ -718,6 +724,7 @@ export default function SavingsPage() {
             <GoalCard
               key={goal.id}
               goal={goal}
+              currency={currency}
               onEdit={openEdit}
               onDelete={openDelete}
               onContribute={(g) => openAdjust(g, 'contribute')}
@@ -828,7 +835,7 @@ export default function SavingsPage() {
                     Current balance:{' '}
                     <span className="tabular-nums">
                       {adjustGoal
-                        ? formatCurrency(adjustGoal.current_amount, CURRENCY)
+                        ? formatCurrency(adjustGoal.current_amount, currency)
                         : '—'}
                     </span>
                     .
@@ -837,7 +844,7 @@ export default function SavingsPage() {
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-2 py-2">
-              <Label htmlFor="adjust-amount">Amount ({CURRENCY})</Label>
+              <Label htmlFor="adjust-amount">Amount ({currency})</Label>
               <Input
                 id="adjust-amount"
                 type="number"

@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react'
 
 type Theme = 'dark' | 'light' | 'system'
 
@@ -16,6 +16,11 @@ const ThemeContext = createContext<ThemeContextValue>({
   resolvedTheme: 'dark',
 })
 
+function getSystemTheme(): 'dark' | 'light' {
+  if (typeof window === 'undefined') return 'dark'
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+}
+
 export function ThemeProvider({
   children,
   defaultTheme = 'dark',
@@ -28,27 +33,35 @@ export function ThemeProvider({
   const [theme, setThemeState] = useState<Theme>(defaultTheme)
   const [resolvedTheme, setResolvedTheme] = useState<'dark' | 'light'>('dark')
 
-  useEffect(() => {
-    const stored = localStorage.getItem(storageKey) as Theme | null
-    if (stored) setThemeState(stored)
-  }, [storageKey])
-
-  useEffect(() => {
+  const applyTheme = useCallback((t: Theme) => {
     const root = document.documentElement
-    let resolved: 'dark' | 'light' = 'dark'
-
-    if (theme === 'system') {
-      resolved = window.matchMedia('(prefers-color-scheme: dark)').matches
-        ? 'dark'
-        : 'light'
-    } else {
-      resolved = theme
-    }
-
+    const resolved = t === 'system' ? getSystemTheme() : t
     root.classList.remove('light', 'dark')
     root.classList.add(resolved)
     setResolvedTheme(resolved)
-  }, [theme])
+  }, [])
+
+  useEffect(() => {
+    const stored = localStorage.getItem(storageKey) as Theme | null
+    if (stored) {
+      setThemeState(stored)
+      applyTheme(stored)
+    } else {
+      applyTheme(defaultTheme)
+    }
+  }, [storageKey, defaultTheme, applyTheme])
+
+  useEffect(() => {
+    applyTheme(theme)
+  }, [theme, applyTheme])
+
+  useEffect(() => {
+    if (theme !== 'system') return
+    const mql = window.matchMedia('(prefers-color-scheme: dark)')
+    const handler = () => applyTheme('system')
+    mql.addEventListener('change', handler)
+    return () => mql.removeEventListener('change', handler)
+  }, [theme, applyTheme])
 
   function setTheme(t: Theme) {
     localStorage.setItem(storageKey, t)

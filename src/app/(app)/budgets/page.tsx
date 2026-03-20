@@ -42,6 +42,7 @@ import {
 } from '@/lib/hooks/use-budgets'
 import { useCategories } from '@/lib/hooks/use-categories'
 import { useTransactions } from '@/lib/hooks/use-transactions'
+import { useCurrency } from '@/lib/hooks/use-currency'
 import { formatCurrency } from '@/lib/utils/currency'
 import {
   formatMonthYear,
@@ -54,7 +55,6 @@ import {
 import { cn } from '@/lib/utils'
 import type { Budget, BudgetPeriod, Category } from '@/types/database'
 
-const CURRENCY = 'ILS'
 const NONE = '__none__'
 
 function effectiveMonthlyAmount(budget: Budget): number {
@@ -88,6 +88,7 @@ function progressBarClass(ratioPercent: number): string {
 }
 
 export default function BudgetsPage() {
+  const currency = useCurrency()
   const [selectedMonth, setSelectedMonth] = useState(() =>
     startOfMonth(getCurrentMonthRange().start)
   )
@@ -292,7 +293,7 @@ export default function BudgetsPage() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="budget-amount">Amount ({CURRENCY})</Label>
+                <Label htmlFor="budget-amount">Amount ({currency})</Label>
                 <Input
                   id="budget-amount"
                   inputMode="decimal"
@@ -353,7 +354,7 @@ export default function BudgetsPage() {
                   {editing.category?.name ?? 'Category'}
                 </p>
                 <div className="space-y-2">
-                  <Label htmlFor="edit-budget-amount">Amount ({CURRENCY})</Label>
+                  <Label htmlFor="edit-budget-amount">Amount ({currency})</Label>
                   <Input
                     id="edit-budget-amount"
                     inputMode="decimal"
@@ -461,13 +462,13 @@ export default function BudgetsPage() {
           <div>
             <p className="text-xs font-medium text-muted-foreground">Total budget</p>
             <p className="mt-1 text-lg font-semibold tabular-nums">
-              {loading ? '…' : formatCurrency(totals.totalBudget, CURRENCY)}
+              {loading ? '…' : formatCurrency(totals.totalBudget, currency)}
             </p>
           </div>
           <div>
             <p className="text-xs font-medium text-muted-foreground">Total spent</p>
             <p className="mt-1 text-lg font-semibold tabular-nums text-red-600 dark:text-red-400">
-              {loading ? '…' : formatCurrency(totals.totalSpent, CURRENCY)}
+              {loading ? '…' : formatCurrency(totals.totalSpent, currency)}
             </p>
           </div>
           <div>
@@ -480,7 +481,7 @@ export default function BudgetsPage() {
                   : 'text-red-600 dark:text-red-400'
               )}
             >
-              {loading ? '…' : formatCurrency(totals.totalRemaining, CURRENCY)}
+              {loading ? '…' : formatCurrency(totals.totalRemaining, currency)}
             </p>
           </div>
         </CardContent>
@@ -585,12 +586,12 @@ export default function BudgetsPage() {
                   <dl className="grid grid-cols-2 gap-3 text-sm">
                     <div>
                       <dt className="text-muted-foreground">Budget</dt>
-                      <dd className="font-medium tabular-nums">{formatCurrency(cap, CURRENCY)}</dd>
+                      <dd className="font-medium tabular-nums">{formatCurrency(cap, currency)}</dd>
                     </div>
                     <div>
                       <dt className="text-muted-foreground">Spent</dt>
                       <dd className="font-medium tabular-nums text-red-600 dark:text-red-400">
-                        {formatCurrency(spent, CURRENCY)}
+                        {formatCurrency(spent, currency)}
                       </dd>
                     </div>
                     <div className="col-span-2">
@@ -603,7 +604,7 @@ export default function BudgetsPage() {
                             : 'text-red-600 dark:text-red-400'
                         )}
                       >
-                        {formatCurrency(remaining, CURRENCY)}
+                        {formatCurrency(remaining, currency)}
                       </dd>
                     </div>
                   </dl>
@@ -622,7 +623,7 @@ export default function BudgetsPage() {
                   {over && (
                     <p className="flex items-center gap-1.5 text-xs text-red-600 dark:text-red-400">
                       <AlertTriangle className="size-3.5 shrink-0" />
-                      {formatCurrency(spent - cap, CURRENCY)} over the limit
+                      {formatCurrency(spent - cap, currency)} over the limit
                     </p>
                   )}
                 </CardContent>

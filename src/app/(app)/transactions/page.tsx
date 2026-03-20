@@ -23,6 +23,7 @@ import {
   useDeleteTransaction,
   useBulkCreateTransactions,
 } from '@/lib/hooks/use-transactions'
+import { useCurrency } from '@/lib/hooks/use-currency'
 import { useAccounts } from '@/lib/hooks/use-accounts'
 import { useCategories } from '@/lib/hooks/use-categories'
 import { parseCSV, mapCSVToTransactions, type ColumnMapping } from '@/lib/utils/csv-parser'
@@ -59,7 +60,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
 
-const CURRENCY = 'ILS'
+const PAGE_SIZE = 50
 const NONE = '__none__'
 
 type TypeFilter = 'all' | TransactionType
@@ -111,11 +112,15 @@ function typeIcon(t: TransactionType) {
 }
 
 export default function TransactionsPage() {
+  const currency = useCurrency()
   const [searchInput, setSearchInput] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
+  const [minAmount, setMinAmount] = useState('')
+  const [maxAmount, setMaxAmount] = useState('')
+  const [fetchLimit, setFetchLimit] = useState(PAGE_SIZE)
 
   useEffect(() => {
     const id = window.setTimeout(() => setDebouncedSearch(searchInput), 300)
@@ -128,18 +133,30 @@ export default function TransactionsPage() {
       ...(startDate ? { startDate } : {}),
       ...(endDate ? { endDate } : {}),
       ...(debouncedSearch.trim() ? { search: debouncedSearch.trim() } : {}),
+      ...(minAmount.trim() ? { minAmount: parseFloat(minAmount) } : {}),
+      ...(maxAmount.trim() ? { maxAmount: parseFloat(maxAmount) } : {}),
     }),
-    [typeFilter, startDate, endDate, debouncedSearch]
+    [typeFilter, startDate, endDate, debouncedSearch, minAmount, maxAmount]
   )
 
-  const { data: transactions = [], isLoading, isError, error } = useTransactions(filters)
+  useEffect(() => {
+    setFetchLimit(PAGE_SIZE)
+  }, [typeFilter, startDate, endDate, debouncedSearch, minAmount, maxAmount])
+
+  const { data: allFiltered = [] } = useTransactions(filters)
+  const {
+    data: transactions = [],
+    isLoading,
+    isError,
+    error,
+  } = useTransactions({ ...filters, limit: fetchLimit })
   const { data: accounts = [], isLoading: accountsLoading } = useAccounts()
   const { data: categories = [], isLoading: categoriesLoading } = useCategories()
   const createTx = useCreateTransaction()
   const deleteTx = useDeleteTransaction()
   const bulkCreate = useBulkCreateTransactions()
 
-  const summary = useMemo(() => summaryFromTransactions(transactions), [transactions])
+  const summary = useMemo(() => summaryFromTransactions(allFiltered), [allFiltered])
 
   const accountMap = useMemo(() => {
     const m = new Map<string, (typeof accounts)[0]>()
@@ -564,7 +581,7 @@ export default function TransactionsPage() {
                                 row.type === 'expense' && 'text-red-600 dark:text-red-400'
                               )}
                             >
-                              {formatCurrency(row.amount, CURRENCY)}
+                              {formatCurrency(row.amount, currency)}
                             </TableCell>
                           </TableRow>
                         ))
@@ -752,7 +769,7 @@ export default function TransactionsPage() {
           <CardContent className="pt-4">
             <p className="text-xs font-medium text-muted-foreground">Total income</p>
             <p className="mt-1 text-lg font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
-              {formatCurrency(summary.income, CURRENCY)}
+              {formatCurrency(summary.income, currency)}
             </p>
           </CardContent>
         </Card>
@@ -760,7 +777,7 @@ export default function TransactionsPage() {
           <CardContent className="pt-4">
             <p className="text-xs font-medium text-muted-foreground">Total expenses</p>
             <p className="mt-1 text-lg font-semibold tabular-nums text-red-600 dark:text-red-400">
-              {formatCurrency(summary.expense, CURRENCY)}
+              {formatCurrency(summary.expense, currency)}
             </p>
           </CardContent>
         </Card>
@@ -773,7 +790,7 @@ export default function TransactionsPage() {
                 summary.net >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'
               )}
             >
-              {formatCurrency(summary.net, CURRENCY)}
+              {formatCurrency(summary.net, currency)}
             </p>
           </CardContent>
         </Card>
@@ -830,6 +847,32 @@ export default function TransactionsPage() {
                   To
                 </Label>
                 <Input id="filter-end" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="filter-min-amount" className="text-xs">
+                  Min
+                </Label>
+                <Input
+                  id="filter-min-amount"
+                  className="w-24"
+                  inputMode="decimal"
+                  placeholder="0"
+                  value={minAmount}
+                  onChange={(e) => setMinAmount(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="filter-max-amount" className="text-xs">
+                  Max
+                </Label>
+                <Input
+                  id="filter-max-amount"
+                  className="w-24"
+                  inputMode="decimal"
+                  placeholder="0"
+                  value={maxAmount}
+                  onChange={(e) => setMaxAmount(e.target.value)}
+                />
               </div>
             </div>
           </div>
@@ -934,7 +977,7 @@ export default function TransactionsPage() {
                           {t.type === 'expense' && '−'}
                           {t.type === 'income' && '+'}
                           {t.type === 'transfer' && '↔ '}
-                          {formatCurrency(t.amount, CURRENCY)}
+                          {formatCurrency(t.amount, currency)}
                         </TableCell>
                         <TableCell className="text-right">
                           <Button
@@ -956,6 +999,18 @@ export default function TransactionsPage() {
               </TableBody>
             </Table>
           </div>
+          {!isLoading && transactions.length > 0 && transactions.length === fetchLimit && (
+            <div className="flex justify-center border-t px-4 py-3">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setFetchLimit((n) => n + PAGE_SIZE)}
+              >
+                Load more
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

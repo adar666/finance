@@ -24,6 +24,7 @@ import {
 
 import { PageHeader } from '@/components/layout/page-header'
 import { formatCurrency } from '@/lib/utils/currency'
+import { useCurrency } from '@/lib/hooks/use-currency'
 import { formatDate, addMonths } from '@/lib/utils/date'
 import {
   useRecurringRules,
@@ -72,7 +73,6 @@ import { Skeleton } from '@/components/ui/skeleton'
 import type { RecurringRule, RecurringFrequency, TransactionType } from '@/types/database'
 import { cn } from '@/lib/utils'
 
-const CURRENCY = 'ILS' as const
 const NONE = '__none__'
 
 type FlowType = 'income' | 'expense'
@@ -179,6 +179,7 @@ const defaultRuleForm = (): RuleForm => ({
 })
 
 export default function PlanningPage() {
+  const currency = useCurrency()
   const { data: rules = [], isLoading: rulesLoading } = useRecurringRules()
   const { data: accounts = [], isLoading: accountsLoading } = useAccounts()
   const { data: categories = [], isLoading: categoriesLoading } = useCategories()
@@ -385,7 +386,7 @@ export default function PlanningPage() {
                               )}
                             </TableCell>
                             <TableCell className="text-right tabular-nums">
-                              {formatCurrency(rule.amount, CURRENCY)}
+                              {formatCurrency(rule.amount, currency)}
                             </TableCell>
                             <TableCell className="capitalize">{rule.frequency}</TableCell>
                             <TableCell className="max-w-[140px] truncate">
@@ -408,7 +409,10 @@ export default function PlanningPage() {
                                 variant="ghost"
                                 size="icon-sm"
                                 className="text-destructive hover:text-destructive"
-                                onClick={() => deleteRule.mutate(rule.id)}
+                                onClick={() => {
+                                  if (!window.confirm('Delete this recurring rule?')) return
+                                  deleteRule.mutate(rule.id)
+                                }}
                                 disabled={deleteRule.isPending}
                               >
                                 <Trash2 className="size-4" />
@@ -583,22 +587,22 @@ export default function PlanningPage() {
                     <YAxis
                       tick={{ fontSize: 11 }}
                       className="text-muted-foreground"
-                      tickFormatter={(v) => formatCurrency(Number(v), CURRENCY)}
+                      tickFormatter={(v) => formatCurrency(Number(v), currency)}
                     />
                     <RTooltip
                       formatter={(value) => {
                         const n = typeof value === 'number' ? value : Number(value ?? 0)
-                        return [formatCurrency(Number.isFinite(n) ? n : 0, CURRENCY), 'Cumulative']
+                        return [formatCurrency(Number.isFinite(n) ? n : 0, currency), 'Cumulative']
                       }}
-                      labelClassName="text-foreground"
-                      contentStyle={{ borderRadius: 8 }}
+                      contentStyle={{ borderRadius: '0.5rem', border: '1px solid var(--border)', backgroundColor: 'var(--card)', color: 'var(--card-foreground)' }}
                     />
                     <Area
                       type="monotone"
                       dataKey="cumulative"
-                      stroke="hsl(var(--primary))"
-                      fill="hsl(var(--primary))"
+                      stroke="var(--primary)"
+                      fill="var(--primary)"
                       fillOpacity={0.2}
+                      animationDuration={800}
                     />
                   </AreaChart>
                 </ResponsiveContainer>
@@ -646,10 +650,10 @@ export default function PlanningPage() {
                       <TableRow key={r.key}>
                         <TableCell>{r.label}</TableCell>
                         <TableCell className="text-right tabular-nums text-emerald-600 dark:text-emerald-400">
-                          {formatCurrency(r.income, CURRENCY)}
+                          {formatCurrency(r.income, currency)}
                         </TableCell>
                         <TableCell className="text-right tabular-nums text-red-600 dark:text-red-400">
-                          {formatCurrency(r.expense, CURRENCY)}
+                          {formatCurrency(r.expense, currency)}
                         </TableCell>
                         <TableCell
                           className={cn(
@@ -657,10 +661,10 @@ export default function PlanningPage() {
                             r.net >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'
                           )}
                         >
-                          {formatCurrency(r.net, CURRENCY)}
+                          {formatCurrency(r.net, currency)}
                         </TableCell>
                         <TableCell className="text-right tabular-nums">
-                          {formatCurrency(r.cumulative, CURRENCY)}
+                          {formatCurrency(r.cumulative, currency)}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -735,7 +739,7 @@ export default function PlanningPage() {
               </CardHeader>
               <CardContent>
                 <p className="text-2xl font-bold tabular-nums">
-                  {formatCurrency(retirement.fv, CURRENCY)}
+                  {formatCurrency(retirement.fv, currency)}
                 </p>
               </CardContent>
             </Card>
@@ -745,7 +749,7 @@ export default function PlanningPage() {
               </CardHeader>
               <CardContent>
                 <p className="text-2xl font-bold tabular-nums">
-                  {formatCurrency(retirement.totalContributions, CURRENCY)}
+                  {formatCurrency(retirement.totalContributions, currency)}
                 </p>
               </CardContent>
             </Card>
@@ -755,7 +759,7 @@ export default function PlanningPage() {
               </CardHeader>
               <CardContent>
                 <p className="text-2xl font-bold tabular-nums text-primary">
-                  {formatCurrency(retirement.totalInterest, CURRENCY)}
+                  {formatCurrency(retirement.totalInterest, currency)}
                 </p>
               </CardContent>
             </Card>
@@ -775,21 +779,22 @@ export default function PlanningPage() {
                     <YAxis
                       tick={{ fontSize: 11 }}
                       className="text-muted-foreground"
-                      tickFormatter={(v) => formatCurrency(Number(v), CURRENCY)}
+                      tickFormatter={(v) => formatCurrency(Number(v), currency)}
                     />
                     <RTooltip
                       formatter={(value) => {
                         const n = typeof value === 'number' ? value : Number(value ?? 0)
-                        return [formatCurrency(Number.isFinite(n) ? n : 0, CURRENCY), 'Balance']
+                        return [formatCurrency(Number.isFinite(n) ? n : 0, currency), 'Balance']
                       }}
-                      contentStyle={{ borderRadius: 8 }}
+                      contentStyle={{ borderRadius: '0.5rem', border: '1px solid var(--border)', backgroundColor: 'var(--card)', color: 'var(--card-foreground)' }}
                     />
                     <Area
                       type="monotone"
                       dataKey="balance"
-                      stroke="hsl(var(--chart-2, 142 76% 36%))"
-                      fill="hsl(var(--chart-2, 142 76% 36%))"
+                      stroke="var(--chart-2)"
+                      fill="var(--chart-2)"
                       fillOpacity={0.2}
+                      animationDuration={800}
                     />
                   </AreaChart>
                 </ResponsiveContainer>

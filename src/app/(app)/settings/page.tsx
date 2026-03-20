@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useRef, useState, type ChangeEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import { format } from 'date-fns'
 import {
@@ -12,6 +12,8 @@ import {
   Pencil,
   Download,
   AlertTriangle,
+  DatabaseBackup,
+  ImageIcon,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -124,6 +126,131 @@ function triggerDownload(filename: string, content: string, mime: string) {
   URL.revokeObjectURL(url)
 }
 
+const BACKUP_TABLES = [
+  'profiles',
+  'accounts',
+  'categories',
+  'transactions',
+  'budgets',
+  'savings_goals',
+  'investments',
+  'recurring_rules',
+] as const
+
+type BackupTable = (typeof BACKUP_TABLES)[number]
+
+async function downloadFullBackup() {
+  const supabase = createClient()
+  const backup: Record<BackupTable, unknown[]> = {
+    profiles: [],
+    accounts: [],
+    categories: [],
+    transactions: [],
+    budgets: [],
+    savings_goals: [],
+    investments: [],
+    recurring_rules: [],
+  }
+  for (const table of BACKUP_TABLES) {
+    const { data, error } = await supabase.from(table).select('*')
+    if (error) throw error
+    backup[table] = data ?? []
+  }
+  const json = JSON.stringify(backup, null, 2)
+  const blob = new Blob([json], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `finance-backup-${format(new Date(), 'yyyy-MM-dd')}.json`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+const UPSERT_CHUNK = 150
+
+function sortCategoriesForRestore(rows: Record<string, unknown>[]): Record<string, unknown>[] {
+  const list = rows.filter((r): r is Record<string, unknown> => typeof r.id === 'string')
+  const ids = new Set(list.map((r) => r.id as string))
+  const result: Record<string, unknown>[] = []
+  const remaining = new Set(list.map((r) => r.id as string))
+  let progressed = true
+  while (remaining.size > 0 && progressed) {
+    progressed = false
+    for (const id of [...remaining]) {
+      const row = list.find((r) => r.id === id)
+      if (!row) {
+        remaining.delete(id)
+        continue
+      }
+      const pid = row.parent_id
+      const parentOk =
+        pid == null ||
+        typeof pid !== 'string' ||
+        !ids.has(pid) ||
+        !remaining.has(pid)
+      if (parentOk) {
+        result.push(row)
+        remaining.delete(id)
+        progressed = true
+      }
+    }
+  }
+  for (const id of remaining) {
+    const row = list.find((r) => r.id === id)
+    if (row) result.push(row)
+  }
+  return result
+}
+
+async function upsertChunked(
+  supabase: ReturnType<typeof createClient>,
+  table: BackupTable,
+  rows: Record<string, unknown>[]
+) {
+  for (let i = 0; i < rows.length; i += UPSERT_CHUNK) {
+    const chunk = rows.slice(i, i + UPSERT_CHUNK)
+    const { error } = await supabase.from(table).upsert(chunk, { onConflict: 'id' })
+    if (error) throw error
+  }
+}
+
+async function restoreFromBackupPayload(parsed: unknown) {
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error('Backup file must be a JSON object')
+  }
+  const payload = parsed as Record<string, unknown>
+  const supabase = createClient()
+  const {
+    data: { user },
+    error: userErr,
+  } = await supabase.auth.getUser()
+  if (userErr) throw userErr
+  if (!user) throw new Error('Not signed in')
+
+  for (const table of BACKUP_TABLES) {
+    const raw = payload[table]
+    if (raw === undefined) continue
+    if (!Array.isArray(raw)) {
+      throw new Error(`Invalid backup: "${table}" must be an array`)
+    }
+    const rows = raw.filter(
+      (r): r is Record<string, unknown> =>
+        r !== null && typeof r === 'object' && !Array.isArray(r)
+    )
+    if (rows.length === 0) continue
+
+    let toUpsert = rows
+    if (table === 'profiles') {
+      toUpsert = rows.filter((r) => r.id === user.id)
+      if (toUpsert.length === 0) continue
+    }
+    if (table === 'categories') {
+      toUpsert = sortCategoriesForRestore(rows)
+    }
+    await upsertChunked(supabase, table, toUpsert)
+  }
+}
+
 type CategoryFormState = {
   name: string
   type: CategoryType
@@ -151,6 +278,9 @@ export default function SettingsPage() {
   const [editing, setEditing] = useState<Category | null>(null)
   const [categoryForm, setCategoryForm] = useState<CategoryFormState>(emptyCategoryForm)
   const [exporting, setExporting] = useState(false)
+  const [backupDownloading, setBackupDownloading] = useState(false)
+  const [restoring, setRestoring] = useState(false)
+  const restoreInputRef = useRef<HTMLInputElement>(null)
 
   const [dangerOpen, setDangerOpen] = useState(false)
   const [dangerConfirm, setDangerConfirm] = useState('')
@@ -229,6 +359,38 @@ export default function SettingsPage() {
       setExporting(false)
     }
   }, [])
+
+  const handleDownloadBackup = useCallback(async () => {
+    setBackupDownloading(true)
+    try {
+      await downloadFullBackup()
+      toast.success('Backup downloaded')
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Backup failed')
+    } finally {
+      setBackupDownloading(false)
+    }
+  }, [])
+
+  const handleRestoreFileChange = useCallback(
+    async (e: ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0]
+      e.target.value = ''
+      if (!file) return
+      setRestoring(true)
+      try {
+        const text = await file.text()
+        const parsed: unknown = JSON.parse(text)
+        await restoreFromBackupPayload(parsed)
+        toast.success('Backup restored')
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Restore failed')
+      } finally {
+        setRestoring(false)
+      }
+    },
+    []
+  )
 
   const handleDeleteAllData = useCallback(async () => {
     if (dangerConfirm !== 'DELETE') return
@@ -379,6 +541,70 @@ export default function SettingsPage() {
             {exporting ? 'Exporting…' : 'Download transactions CSV'}
           </Button>
         </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <DatabaseBackup className="size-4 text-muted-foreground" />
+            <CardTitle className="text-base">Backup &amp; restore</CardTitle>
+          </div>
+          <CardDescription>
+            Download all tables as one JSON file, or restore from a previous backup. Existing rows with
+            the same id are updated.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4 sm:flex-row sm:items-center sm:flex-wrap">
+          <Button
+            variant="outline"
+            className="gap-2 w-fit"
+            onClick={handleDownloadBackup}
+            disabled={backupDownloading || restoring}
+          >
+            <DatabaseBackup className="size-4" />
+            {backupDownloading ? 'Preparing…' : 'Download backup'}
+          </Button>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <input
+              ref={restoreInputRef}
+              type="file"
+              accept="application/json,.json"
+              className="sr-only"
+              onChange={handleRestoreFileChange}
+              aria-label="Restore from backup JSON file"
+            />
+            <Button
+              variant="secondary"
+              className="gap-2 w-fit"
+              disabled={restoring || backupDownloading}
+              onClick={() => restoreInputRef.current?.click()}
+            >
+              {restoring ? 'Restoring…' : 'Restore from backup'}
+            </Button>
+            <span className="text-xs text-muted-foreground">Choose a .json file exported from this app.</span>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-2">
+              <ImageIcon className="size-4 text-muted-foreground" />
+              <CardTitle className="text-base">Receipt uploads</CardTitle>
+            </div>
+            <Badge
+              variant="secondary"
+              className="shrink-0 pointer-events-none opacity-50 select-none"
+              aria-disabled
+            >
+              Coming soon
+            </Badge>
+          </div>
+          <CardDescription>
+            Receipt uploads — Coming soon. Attach receipt photos to transactions using Supabase Storage.
+          </CardDescription>
+        </CardHeader>
       </Card>
 
       <Card className="border-destructive/40">

@@ -21,6 +21,7 @@ import {
   useUpdateAccount,
   useDeleteAccount,
 } from '@/lib/hooks/use-accounts'
+import { useCurrency } from '@/lib/hooks/use-currency'
 import type { Account, AccountType } from '@/types/database'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -45,8 +46,6 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
-
-const CURRENCY = 'ILS' as const
 
 const ACCOUNT_TYPE_ORDER: AccountType[] = [
   'checking',
@@ -121,7 +120,7 @@ function groupAccountsByType(accounts: Account[]): Map<AccountType, Account[]> {
   return map
 }
 
-function NetWorthSummary({ total }: { total: number }) {
+function NetWorthSummary({ total, currency }: { total: number; currency: string }) {
   return (
     <Card className="border-primary/20 bg-gradient-to-br from-primary/5 via-background to-background shadow-sm">
       <CardHeader className="pb-2">
@@ -136,7 +135,7 @@ function NetWorthSummary({ total }: { total: number }) {
             total >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'
           )}
         >
-          {formatCurrency(total, CURRENCY)}
+          {formatCurrency(total, currency)}
         </p>
         <p className="mt-1 text-xs text-muted-foreground">
           Sum of balances across all accounts marked active
@@ -153,10 +152,12 @@ function AccountTypeIcon({ type, className }: { type: AccountType; className?: s
 
 function AccountCard({
   account,
+  currency,
   onEdit,
   onDelete,
 }: {
   account: Account
+  currency: string
   onEdit: (a: Account) => void
   onDelete: (a: Account) => void
 }) {
@@ -237,7 +238,7 @@ function AccountCard({
             positive ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'
           )}
         >
-          {formatCurrency(balance, CURRENCY)}
+          {formatCurrency(balance, currency)}
         </p>
       </CardContent>
     </Card>
@@ -351,6 +352,7 @@ function AccountsPageSkeleton() {
 }
 
 export default function AccountsPage() {
+  const currency = useCurrency()
   const { data: accounts = [], isPending, isError, error } = useAccounts()
   const createMut = useCreateAccount()
   const updateMut = useUpdateAccount()
@@ -531,7 +533,7 @@ export default function AccountsPage() {
         </Dialog>
       </PageHeader>
 
-      {!isEmpty && <NetWorthSummary total={netWorth} />}
+      {!isEmpty && <NetWorthSummary total={netWorth} currency={currency} />}
 
       {isEmpty ? (
         <Card className="border-dashed">
@@ -577,6 +579,7 @@ export default function AccountsPage() {
                     <AccountCard
                       key={account.id}
                       account={account}
+                      currency={currency}
                       onEdit={openEdit}
                       onDelete={openDelete}
                     />
