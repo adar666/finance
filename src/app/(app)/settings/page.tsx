@@ -56,6 +56,7 @@ import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
+import { selectItemsFromCurrencies, selectItemsFromMap } from '@/lib/utils/select-items'
 
 function escapeCsvField(value: string): string {
   if (/[",\r\n]/.test(value)) {
@@ -136,6 +137,13 @@ const BACKUP_TABLES = [
   'investments',
   'recurring_rules',
 ] as const
+
+const SETTINGS_CURRENCY_SELECT_ITEMS = selectItemsFromCurrencies(CURRENCIES)
+
+const CATEGORY_FORM_TYPE_ITEMS = selectItemsFromMap(['income', 'expense'], {
+  income: 'Income',
+  expense: 'Expense',
+})
 
 type BackupTable = (typeof BACKUP_TABLES)[number]
 
@@ -466,6 +474,7 @@ export default function SettingsPage() {
                   if (code) updateProfile.mutate({ currency: code })
                 }}
                 disabled={updateProfile.isPending}
+                items={SETTINGS_CURRENCY_SELECT_ITEMS}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -647,6 +656,7 @@ export default function SettingsPage() {
                 onValueChange={(v) =>
                   setCategoryForm((f) => ({ ...f, type: (v ?? 'expense') as CategoryType }))
                 }
+                items={CATEGORY_FORM_TYPE_ITEMS}
               >
                 <SelectTrigger>
                   <SelectValue />

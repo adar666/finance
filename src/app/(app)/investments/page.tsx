@@ -59,6 +59,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
+import { selectItemsFromMap } from '@/lib/utils/select-items'
 
 const CHART_COLORS = [
   '#3b82f6',
@@ -80,6 +81,8 @@ const TYPE_LABELS: Record<InvestmentType, string> = {
   bond: 'Bond',
   other: 'Other',
 }
+
+const INVESTMENT_TYPE_SELECT_ITEMS = selectItemsFromMap(INVESTMENT_TYPES, TYPE_LABELS)
 
 const CURRENCY_OPTIONS = ['USD', 'ILS', 'EUR'] as const
 
@@ -308,6 +311,7 @@ function InvestmentFormFields({
           <Select
             value={form.type}
             onValueChange={(v) => onChange({ ...form, type: v as InvestmentType })}
+            items={INVESTMENT_TYPE_SELECT_ITEMS}
           >
             <SelectTrigger id="inv-type" className="w-full">
               <SelectValue />

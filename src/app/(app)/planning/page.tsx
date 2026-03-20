@@ -72,8 +72,28 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { RecurringRule, RecurringFrequency, TransactionType } from '@/types/database'
 import { cn } from '@/lib/utils'
+import {
+  selectItemsFromEntities,
+  selectItemsFromMap,
+  selectItemsWithNone,
+} from '@/lib/utils/select-items'
 
 const NONE = '__none__'
+
+const RECURRING_FLOW_SELECT_ITEMS = selectItemsFromMap(['income', 'expense'], {
+  income: 'Income',
+  expense: 'Expense',
+})
+
+const RECURRING_FREQUENCY_SELECT_ITEMS = selectItemsFromMap(
+  ['daily', 'weekly', 'monthly', 'yearly'],
+  {
+    daily: 'Daily',
+    weekly: 'Weekly',
+    monthly: 'Monthly',
+    yearly: 'Yearly',
+  }
+)
 
 type FlowType = 'income' | 'expense'
 
@@ -297,6 +317,13 @@ export default function PlanningPage() {
     [categories]
   )
 
+  const recurringAccountItems = useMemo(() => selectItemsFromEntities(accounts), [accounts])
+
+  const recurringCategoryItems = useMemo(
+    () => selectItemsWithNone(NONE, 'None', categories.filter((c) => c.type === form.type)),
+    [categories, form.type]
+  )
+
   return (
     <div className="pb-24 md:pb-8">
       <PageHeader
@@ -449,6 +476,7 @@ export default function PlanningPage() {
                     <Select
                       value={form.type}
                       onValueChange={(v) => setForm((f) => ({ ...f, type: v as FlowType }))}
+                      items={RECURRING_FLOW_SELECT_ITEMS}
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -478,6 +506,7 @@ export default function PlanningPage() {
                     onValueChange={(v) =>
                       setForm((f) => ({ ...f, frequency: v as RecurringFrequency }))
                     }
+                    items={RECURRING_FREQUENCY_SELECT_ITEMS}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -506,8 +535,9 @@ export default function PlanningPage() {
                 <div className="grid gap-2">
                   <Label>Account</Label>
                   <Select
-                    value={form.account_id}
+                    value={form.account_id || null}
                     onValueChange={(v) => setForm((f) => ({ ...f, account_id: v ?? '' }))}
+                    items={recurringAccountItems}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select account" />
@@ -526,6 +556,7 @@ export default function PlanningPage() {
                   <Select
                     value={form.category_id}
                     onValueChange={(v) => setForm((f) => ({ ...f, category_id: v ?? NONE }))}
+                    items={recurringCategoryItems}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Optional" />

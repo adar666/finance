@@ -58,9 +58,15 @@ import {
   effectiveMonthlyBudgetAmount,
   isBudgetActiveInSelectedMonth,
 } from '@/lib/utils/budget-health'
+import { selectItemsFromMap, selectItemsWithNone } from '@/lib/utils/select-items'
 import type { Budget, BudgetPeriod, Category } from '@/types/database'
 
 const NONE = '__none__'
+
+const BUDGET_PERIOD_SELECT_ITEMS = selectItemsFromMap(['monthly', 'yearly'], {
+  monthly: 'Monthly',
+  yearly: 'Yearly',
+})
 
 function progressBarClass(ratioPercent: number): string {
   if (ratioPercent > 100) {
@@ -172,6 +178,11 @@ export default function BudgetsPage() {
     return expenseCategories.filter((c) => !used.has(c.id))
   }, [expenseCategories, budgets])
 
+  const newBudgetCategoryItems = useMemo(
+    () => selectItemsWithNone(NONE, '—', categoriesAvailableForNewBudget),
+    [categoriesAvailableForNewBudget]
+  )
+
   function openEdit(b: Budget) {
     setEditing(b)
     setEditAmount(String(b.amount))
@@ -257,6 +268,7 @@ export default function BudgetsPage() {
                   value={formCategoryId || NONE}
                   onValueChange={(v) => setFormCategoryId(v == null || v === NONE ? '' : v)}
                   disabled={categoriesLoading}
+                  items={newBudgetCategoryItems}
                 >
                   <SelectTrigger className="w-full">
                     <SelectValue
@@ -297,6 +309,7 @@ export default function BudgetsPage() {
                 <Select
                   value={formPeriod}
                   onValueChange={(v) => v && setFormPeriod(v as BudgetPeriod)}
+                  items={BUDGET_PERIOD_SELECT_ITEMS}
                 >
                   <SelectTrigger className="w-full">
                     <SelectValue />
@@ -353,6 +366,7 @@ export default function BudgetsPage() {
                   <Select
                     value={editPeriod}
                     onValueChange={(v) => v && setEditPeriod(v as BudgetPeriod)}
+                    items={BUDGET_PERIOD_SELECT_ITEMS}
                   >
                     <SelectTrigger className="w-full">
                       <SelectValue />

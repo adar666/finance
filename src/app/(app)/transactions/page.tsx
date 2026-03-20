@@ -61,6 +61,10 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
 import { consumeAddTransactionQueryParam } from '@/lib/navigation/transaction-add-query'
+import {
+  selectItemsFromEntities,
+  selectItemsWithNone,
+} from '@/lib/utils/select-items'
 
 const PAGE_SIZE = 50
 const NONE = '__none__'
@@ -199,6 +203,20 @@ export default function TransactionsPage() {
     return categories.filter((c) => c.type === formType)
   }, [categories, formType])
 
+  const importAccountSelectItems = useMemo(() => selectItemsFromEntities(accounts), [accounts])
+
+  const addTxAccountItems = useMemo(() => selectItemsWithNone(NONE, '—', accounts), [accounts])
+
+  const addTxToAccountItems = useMemo(
+    () => selectItemsWithNone(NONE, '—', accounts.filter((a) => a.id !== formAccountId)),
+    [accounts, formAccountId]
+  )
+
+  const addTxCategoryItems = useMemo(
+    () => selectItemsWithNone(NONE, 'None', categoriesForType),
+    [categoriesForType]
+  )
+
   useEffect(() => {
     if (formType === 'transfer') {
       setFormCategoryId('')
@@ -269,6 +287,17 @@ export default function TransactionsPage() {
   const [mapCategory, setMapCategory] = useState('')
   const [mapNotes, setMapNotes] = useState('')
   const [importAccountId, setImportAccountId] = useState('')
+
+  /** CSV column picks: sentinel row label must match trigger (not raw `__none__`). */
+  const csvMappingItemsDashNone = useMemo(
+    () => [{ value: NONE, label: '—' }, ...csvHeaders.map((h) => ({ value: h, label: h }))],
+    [csvHeaders]
+  )
+
+  const csvMappingItemsNoneNone = useMemo(
+    () => [{ value: NONE, label: 'None' }, ...csvHeaders.map((h) => ({ value: h, label: h }))],
+    [csvHeaders]
+  )
 
   const resetImport = useCallback(() => {
     setImportStep(1)
@@ -457,7 +486,11 @@ export default function TransactionsPage() {
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label>Date column</Label>
-                    <Select value={mapDate || NONE} onValueChange={(v) => setMapDate(v == null || v === NONE ? '' : v)}>
+                    <Select
+                      value={mapDate || NONE}
+                      onValueChange={(v) => setMapDate(v == null || v === NONE ? '' : v)}
+                      items={csvMappingItemsDashNone}
+                    >
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="Select column" />
                       </SelectTrigger>
@@ -469,7 +502,11 @@ export default function TransactionsPage() {
                   </div>
                   <div className="space-y-2">
                     <Label>Amount column</Label>
-                    <Select value={mapAmount || NONE} onValueChange={(v) => setMapAmount(v == null || v === NONE ? '' : v)}>
+                    <Select
+                      value={mapAmount || NONE}
+                      onValueChange={(v) => setMapAmount(v == null || v === NONE ? '' : v)}
+                      items={csvMappingItemsDashNone}
+                    >
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="Select column" />
                       </SelectTrigger>
@@ -484,6 +521,7 @@ export default function TransactionsPage() {
                     <Select
                       value={mapDescription || NONE}
                       onValueChange={(v) => setMapDescription(v == null || v === NONE ? '' : v)}
+                      items={csvMappingItemsDashNone}
                     >
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="Select column" />
@@ -501,6 +539,7 @@ export default function TransactionsPage() {
                       onValueChange={(v) =>
                         setMapCategory(v != null && v !== NONE ? v : '')
                       }
+                      items={csvMappingItemsNoneNone}
                     >
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="None" />
@@ -513,7 +552,11 @@ export default function TransactionsPage() {
                   </div>
                   <div className="space-y-2">
                     <Label>Notes (optional)</Label>
-                    <Select value={mapNotes || NONE} onValueChange={(v) => setMapNotes(v == null || v === NONE ? '' : v)}>
+                    <Select
+                      value={mapNotes || NONE}
+                      onValueChange={(v) => setMapNotes(v == null || v === NONE ? '' : v)}
+                      items={csvMappingItemsNoneNone}
+                    >
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="None" />
                       </SelectTrigger>
@@ -539,7 +582,11 @@ export default function TransactionsPage() {
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label>Default account</Label>
-                  <Select value={importAccountId || NONE} onValueChange={(v) => setImportAccountId(v == null || v === NONE ? '' : v)}>
+                  <Select
+                    value={importAccountId || null}
+                    onValueChange={(v) => setImportAccountId(v ?? '')}
+                    items={importAccountSelectItems}
+                  >
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder={accountsLoading ? 'Loading…' : 'Select account'} />
                     </SelectTrigger>
@@ -689,7 +736,11 @@ export default function TransactionsPage() {
 
               <div className="space-y-2">
                 <Label>{formType === 'transfer' ? 'From account' : 'Account'}</Label>
-                <Select value={formAccountId || NONE} onValueChange={(v) => setFormAccountId(v == null || v === NONE ? '' : v)}>
+                <Select
+                  value={formAccountId || NONE}
+                  onValueChange={(v) => setFormAccountId(v == null || v === NONE ? '' : v)}
+                  items={addTxAccountItems}
+                >
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder={accountsLoading ? 'Loading…' : 'Select account'} />
                   </SelectTrigger>
@@ -707,7 +758,11 @@ export default function TransactionsPage() {
               {formType === 'transfer' && (
                 <div className="space-y-2">
                   <Label>To account</Label>
-                  <Select value={formToAccountId || NONE} onValueChange={(v) => setFormToAccountId(v == null || v === NONE ? '' : v)}>
+                  <Select
+                    value={formToAccountId || NONE}
+                    onValueChange={(v) => setFormToAccountId(v == null || v === NONE ? '' : v)}
+                    items={addTxToAccountItems}
+                  >
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Select destination" />
                     </SelectTrigger>
@@ -732,6 +787,7 @@ export default function TransactionsPage() {
                     value={formCategoryId || NONE}
                     onValueChange={(v) => setFormCategoryId(v == null || v === NONE ? '' : v)}
                     disabled={categoriesLoading}
+                    items={addTxCategoryItems}
                   >
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Optional" />

@@ -46,6 +46,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
+import { selectItemsFromMap } from '@/lib/utils/select-items'
 
 const ACCOUNT_TYPE_ORDER: AccountType[] = [
   'checking',
@@ -62,6 +63,8 @@ const TYPE_LABELS: Record<AccountType, string> = {
   investment: 'Investment',
   cash: 'Cash',
 }
+
+const ACCOUNT_TYPE_SELECT_ITEMS = selectItemsFromMap(ACCOUNT_TYPE_ORDER, TYPE_LABELS)
 
 const TYPE_ICONS: Record<AccountType, LucideIcon> = {
   checking: Wallet,
@@ -271,6 +274,7 @@ function AccountFormFields({
         <Select
           value={form.type}
           onValueChange={(v) => onChange({ ...form, type: v as AccountType })}
+          items={ACCOUNT_TYPE_SELECT_ITEMS}
         >
           <SelectTrigger id="account-type" className="w-full">
             <SelectValue />
