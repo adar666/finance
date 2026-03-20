@@ -1,13 +1,34 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Finance">
   <defs>
-    <linearGradient id="bg" x1="8" y1="4" x2="24" y2="28" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#2dd4bf"/>
-      <stop offset="1" stop-color="#0d9488"/>
+    <linearGradient id="bg" x1="2" y1="2" x2="30" y2="30" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#3730a3"/>
+      <stop offset="0.45" stop-color="#1e1b4b"/>
+      <stop offset="1" stop-color="#0f0a1f"/>
     </linearGradient>
+    <linearGradient id="coin" x1="16" y1="14" x2="16" y2="25" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#fbbf24"/>
+      <stop offset="0.55" stop-color="#d97706"/>
+      <stop offset="1" stop-color="#92400e"/>
+    </linearGradient>
+    <linearGradient id="coinHi" x1="10" y1="11" x2="22" y2="15" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#fffbeb"/>
+      <stop offset="1" stop-color="#f59e0b"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="30%" cy="25%" r="65%">
+      <stop offset="0%" stop-color="#818cf8" stop-opacity="0.45"/>
+      <stop offset="100%" stop-color="#312e81" stop-opacity="0"/>
+    </radialGradient>
   </defs>
-  <rect width="32" height="32" rx="8" fill="url(#bg)"/>
-  <!-- Ledger lines (reads clearly at favicon size) -->
-  <rect x="7" y="9" width="18" height="3" rx="1.5" fill="#fff"/>
-  <rect x="7" y="14.5" width="18" height="3" rx="1.5" fill="#fff" opacity="0.95"/>
-  <rect x="7" y="20" width="13" height="3" rx="1.5" fill="#fff" opacity="0.85"/>
+  <rect width="32" height="32" rx="9" fill="url(#bg)"/>
+  <rect width="32" height="32" rx="9" fill="url(#glow)"/>
+  <!-- Orbit accent -->
+  <ellipse cx="16" cy="16" rx="13" ry="5" fill="none" stroke="#6366f1" stroke-width="0.75" stroke-opacity="0.35" transform="rotate(-12 16 16)"/>
+  <!-- Stacked coins (isometric-ish) -->
+  <ellipse cx="16" cy="23.5" rx="10" ry="3.4" fill="url(#coin)" opacity="0.82"/>
+  <ellipse cx="16" cy="18.8" rx="9.2" ry="3.1" fill="url(#coin)"/>
+  <ellipse cx="16" cy="14" rx="8.2" ry="2.85" fill="url(#coinHi)"/>
+  <ellipse cx="16" cy="13.6" rx="6.5" ry="2.2" fill="#fff" fill-opacity="0.22"/>
+  <!-- Mini sparkle: “smart” money -->
+  <path fill="#e0e7ff" d="M24.5 5.5l.35 1.05 1.05.35-1.05.35L24.5 8.3l-.35-1.05-1.05-.35 1.05-.35.35-1.05z"/>
+  <circle cx="24.5" cy="6.9" r="0.55" fill="#fff"/>
 </svg>
